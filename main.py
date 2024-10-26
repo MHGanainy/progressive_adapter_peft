@@ -1,13 +1,20 @@
 # Install required libraries if you haven't already
 # !pip install transformers datasets peft
 
-from transformers import GPT2Tokenizer, GPT2LMHeadModel, TrainingArguments
-from peft import LoraConfig, get_peft_model, PeftModel
-from peft.tuners.lora import LoraLayer
-from torch.utils.data import Dataset
 import torch
-import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
+from transformers import (
+    GPT2Tokenizer,
+    GPT2LMHeadModel,
+    DataCollatorForLanguageModeling,
+)
+from peft import LoraConfig, get_peft_model
+from peft.tuners.lora import LoraLayer
 import json
+import math
+import warnings
+from typing import Any, Optional, Union
+from torch import nn
 
 # Load GPT-2 tokenizer and model
 tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
@@ -48,7 +55,7 @@ for adapter_cfg in adapter_configs[1:]:
     peft_config = create_lora_config(adapter_cfg)
     model.add_adapter(adapter_cfg['adapter_name'], peft_config)
 
-# Print the adapters in the model
+# Print the adapters in the model (optional)
 def print_model_adapters(model):
     """
     Prints the adapters present in each layer of the model.
@@ -61,7 +68,11 @@ def print_model_adapters(model):
             for adapter_name in module.lora_A.keys():
                 r = module.r[adapter_name]
                 lora_alpha = module.lora_alpha[adapter_name]
-                lora_dropout = module.lora_dropout[adapter_name].p if isinstance(module.lora_dropout[adapter_name], torch.nn.Dropout) else 0.0
+                lora_dropout = (
+                    module.lora_dropout[adapter_name].p
+                    if isinstance(module.lora_dropout[adapter_name], torch.nn.Dropout)
+                    else 0.0
+                )
                 print(f"    * Adapter Name: {adapter_name}")
                 print(f"      - Rank (r): {r}")
                 print(f"      - Alpha: {lora_alpha}")
@@ -70,23 +81,60 @@ def print_model_adapters(model):
 
 print_model_adapters(model)
 
-# Define the single sample with adapter_names
-sample = {
-    'text': 'Hello, how are you?',
-}
+def print_active_adapters(model):
+    """
+    Prints the active adapters for each LoraLayer in the model.
+    """
+    print("Active adapters in the model:")
+    for name, module in model.named_modules():
+        if isinstance(module, LoraLayer):
+            # Extract layer index from module name (optional, for better readability)
+            name_parts = name.split('.')
+            layer_info = ""
+            if 'h' in name_parts:
+                h_idx = name_parts.index('h')
+                layer_idx = int(name_parts[h_idx + 1])
+                layer_info = f" (Layer {layer_idx})"
+            active_adapters = module.active_adapters
+            if active_adapters:
+                print(f"{name}{layer_info}: {active_adapters}")
+            else:
+                print(f"{name}{layer_info}: No active adapters")
 
-# Create a custom dataset with one sample
-class SingleSampleDataset(Dataset):
-    def __init__(self, sample, tokenizer):
-        self.sample = sample
+# Call the method before the training loop
+print("Before training:")
+print_active_adapters(model)
+
+# Define multiple samples with adapter_names
+samples = [
+    {
+        'text': 'Hello, how are you?',
+        'adapter_names': {
+            layer_idx: f'layer_{layer_idx}_adapter_0' for layer_idx in range(12)
+        }
+    },
+    {
+        'text': 'What is the weather today?',
+        'adapter_names': {
+            layer_idx: f'layer_{layer_idx}_adapter_0' for layer_idx in range(12)
+        }
+    },
+    # Add more samples as needed
+]
+
+# Create a custom dataset with multiple samples
+class CustomDataset(Dataset):
+    def __init__(self, samples, tokenizer):
+        self.samples = samples
         self.tokenizer = tokenizer
 
     def __len__(self):
-        return 1
+        return len(self.samples)
 
     def __getitem__(self, idx):
-        text = self.sample['text']
-        adapter_names = torch.tensor([9000 + (layer_idx * 10) for layer_idx in range(12)])
+        sample = self.samples[idx]
+        text = sample['text']
+        adapter_names = sample['adapter_names']
 
         # Tokenize the text
         encoding = self.tokenizer(
@@ -110,88 +158,84 @@ class SingleSampleDataset(Dataset):
         }
 
 # Instantiate the dataset
-dataset = SingleSampleDataset(sample, tokenizer)
+dataset = CustomDataset(samples, tokenizer)
 
-# Create a wrapper for the model
-class CustomModelWrapper(nn.Module):
-    def __init__(self, model):
-        super().__init__()
-        self.model = model
+# Define the data collator
+class DataCollatorWithAdapterNames(DataCollatorForLanguageModeling):
+    def __call__(self, examples):
+        # Extract adapter_names and remove from examples
+        adapter_names = [example.pop('adapter_names') for example in examples]
 
-    def decode_adapter_names(self, adapter_names_tensor):
-        """
-        Converts tensor of shape [batch_size, num_layers] to list of dictionaries
-        Each value is converted from format "9XXY" to "layer_XX_adapter_Y"
-        """
-        # Move tensor to CPU and convert to string format
-        batch_size, num_layers = adapter_names_tensor.shape
-        adapter_names_list = []
-        
-        # Process each item in the batch
-        for batch_idx in range(batch_size):
-            adapter_dict = {}
-            # Process each layer
-            for layer_idx in range(num_layers):
-                code = str(adapter_names_tensor[batch_idx, layer_idx].item())  # e.g., "9010"
-                layer_num = code[1:3]  # "01"
-                adapter_num = code[3]   # "0"
-                adapter_dict[int(layer_num)] = f"layer_{int(layer_num)}_adapter_{int(adapter_num)}"
-            
-            adapter_names_list.append(adapter_dict)
-            
-        # If batch size is 1, return just the dictionary instead of a list
-        return adapter_names_list
+        # Use the parent class method to collate input_ids and labels
+        batch = super().__call__(examples)
 
-    def forward(self, input_ids=None, attention_mask=None, labels=None, adapter_names=None, **kwargs):
-        # Remove adapter_names from device if it exists
-        if adapter_names is not None:
-            # Convert the tensor format to dictionary format
-            adapter_dict = self.decode_adapter_names(adapter_names)
-            # Remove the tensor format from inputs
-            adapter_names = None
-            # Add the dictionary format to kwargs
-            kwargs['adapter_names'] = adapter_dict
+        # Add adapter_names back to the batch
+        batch['adapter_names'] = adapter_names
 
-        return self.model(
+        return batch
+
+data_collator = DataCollatorWithAdapterNames(tokenizer=tokenizer, mlm=False)
+
+# Create the DataLoader
+from torch.utils.data import DataLoader
+
+# Set batch_size=1 to handle per-sample adapter activation
+dataloader = DataLoader(dataset, batch_size=1, shuffle=False, collate_fn=data_collator)
+
+# Define training parameters
+num_epochs = 1
+learning_rate = 5e-5
+
+# Filter the model parameters to include only those of the adapters
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model.to(device)
+
+# Training loop
+# Training loop
+for epoch in range(num_epochs):
+    model.train()
+    epoch_loss = 0.0
+    for batch in dataloader:
+        input_ids = batch['input_ids'].to(device)
+        attention_mask = batch['attention_mask'].to(device)
+        labels = batch['labels'].to(device)
+        adapter_names_list = batch['adapter_names']
+
+        # Since batch_size=1, we take the first item's adapter_names
+        batch_adapter_names = adapter_names_list[0]  # Dict mapping layer_idx to adapter_name
+
+        # Set active adapters per layer using set_adapter
+        for name, module in model.named_modules():
+            if isinstance(module, LoraLayer):
+                # Extract layer index from module name
+                name_parts = name.split('.')
+                if 'h' in name_parts:
+                    h_idx = name_parts.index('h')
+                    layer_idx = int(name_parts[h_idx + 1])
+
+                    # Get adapter name for this layer
+                    adapter_name = batch_adapter_names[layer_idx]
+
+                    # Set the active adapter using set_adapter method
+                    module.set_adapter(adapter_name)
+        print(f"\nActive adapters before forward pass (Epoch {epoch+1}):")
+        print_active_adapters(model)
+        # Forward pass
+        outputs = model(
             input_ids=input_ids,
             attention_mask=attention_mask,
             labels=labels,
-            **kwargs
         )
+        loss = outputs.loss
 
-model = CustomModelWrapper(model)
+        # Backward pass and optimization
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
+        epoch_loss += loss.item()
 
-
-# Subclass Trainer to pass adapter_names
-from transformers import Trainer
-
-class CustomTrainer(Trainer):
-    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
-        # Extract adapter_names from inputs
-        # Ensure adapter_names is included when calling model
-        outputs = model(**inputs)
-        loss = outputs.loss if isinstance(outputs, tuple) else outputs['loss']
-        return (loss, outputs) if return_outputs else loss
-
-# Set up training arguments
-training_args = TrainingArguments(
-    output_dir='./results',
-    num_train_epochs=3,
-    per_device_train_batch_size=1,
-    logging_steps=1,
-    save_steps=10,
-    save_total_limit=2,
-    learning_rate=5e-5,
-    remove_unused_columns=False,  # Important to prevent dropping 'adapter_names',
-)
-
-# Initialize the trainer
-trainer = CustomTrainer(
-    model=model,
-    args=training_args,
-    train_dataset=dataset,
-)
-
-# Train the model
-trainer.train()
+    average_loss = epoch_loss / len(dataloader)
+    print(f"Epoch {epoch + 1}, Loss: {average_loss}")
