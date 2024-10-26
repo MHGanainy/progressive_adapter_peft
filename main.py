@@ -15,7 +15,16 @@ if tokenizer.pad_token is None:
     tokenizer.padding_side = 'left'
 
 # Set up LoRA configuration with correct target modules
-peft_config = LoraConfig(
+peft_config_1 = LoraConfig(
+    r=8,
+    lora_alpha=32,
+    lora_dropout=0.1,
+    target_modules=['c_attn', 'c_proj'],
+    bias='none',
+    task_type='CAUSAL_LM'
+)
+
+peft_config_2 = LoraConfig(
     r=8,
     lora_alpha=32,
     lora_dropout=0.1,
@@ -57,14 +66,8 @@ tokenized_dataset = dataset.map(
     batched=True,
     remove_columns=dataset.column_names
 )
+tokenized_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
 
-# Custom data collator
-def custom_data_collator(features):
-    batch = {}
-    batch['input_ids'] = torch.stack([torch.tensor(f['input_ids']) for f in features])
-    batch['attention_mask'] = torch.stack([torch.tensor(f['attention_mask']) for f in features])
-    batch['labels'] = torch.stack([torch.tensor(f['labels']) for f in features])
-    return batch
 
 # Define training arguments
 training_args = TrainingArguments(
@@ -80,6 +83,10 @@ training_args = TrainingArguments(
     learning_rate=2e-4,              # Added specific learning rate
     warmup_steps=100,                # Added warmup steps
     weight_decay=0.01,               # Added weight decay
+    save_strategy="no",      # Disable all saving
+    save_steps=None,         # No saving at specific steps
+    save_total_limit=0,      # Don't keep any checkpoints
+    report_to="none",        # Disable wandb/tensorboard/etc logging
 )
 
 # Initialize the Trainer with the custom data collator
@@ -87,12 +94,8 @@ trainer = Trainer(
     model=model,
     args=training_args,
     train_dataset=tokenized_dataset,
-    eval_dataset=tokenized_dataset,
-    data_collator=custom_data_collator,
+    eval_dataset=tokenized_dataset
 )
 
 # Start training
 trainer.train()
-
-# Save the final model
-trainer.save_model("./final_model")
