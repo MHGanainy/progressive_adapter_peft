@@ -1,11 +1,12 @@
 # Install required libraries if you haven't already
 # !pip install transformers datasets peft
 
-from transformers import GPT2Tokenizer, GPT2LMHeadModel, Trainer, TrainingArguments
-from peft import LoraConfig, get_peft_model
+from transformers import GPT2Tokenizer, GPT2LMHeadModel, TrainingArguments
+from peft import LoraConfig, get_peft_model, PeftModel
 from peft.tuners.lora import LoraLayer
-from datasets import load_dataset
+from torch.utils.data import Dataset
 import torch
+import torch.nn as nn
 import json
 
 # Load GPT-2 tokenizer and model
@@ -18,6 +19,7 @@ if tokenizer.pad_token is None:
     tokenizer.pad_token_id = tokenizer.eos_token_id
     tokenizer.padding_side = 'left'
 
+# Load adapter configurations from 'config.json'
 with open('config.json', 'r') as f:
     loaded_configs = json.load(f)
 
@@ -46,8 +48,7 @@ for adapter_cfg in adapter_configs[1:]:
     peft_config = create_lora_config(adapter_cfg)
     model.add_adapter(adapter_cfg['adapter_name'], peft_config)
 
-# print(model)
-
+# Print the adapters in the model
 def print_model_adapters(model):
     """
     Prints the adapters present in each layer of the model.
@@ -69,66 +70,128 @@ def print_model_adapters(model):
 
 print_model_adapters(model)
 
-# # Enhanced tokenization function that creates labels for causal LM
-# def tokenize_and_label(examples):
-#     # Tokenize the texts
-#     tokenized_inputs = tokenizer(
-#         examples['text'],
-#         truncation=True,
-#         padding='max_length',
-#         max_length=128,
-#         return_tensors='pt'
-#     )
-    
-#     # Create labels (for causal LM, labels are the same as input_ids)
-#     labels = tokenized_inputs['input_ids'].clone()
-    
-#     # Mark padding tokens with -100 so they're ignored in the loss
-#     labels[labels == tokenizer.pad_token_id] = -100
-    
-#     return {
-#         'input_ids': tokenized_inputs['input_ids'],
-#         'attention_mask': tokenized_inputs['attention_mask'],
-#         'labels': labels
-#     }
+# Define the single sample with adapter_names
+sample = {
+    'text': 'Hello, how are you?',
+}
 
-# # Load a small portion of a dataset for demonstration purposes
-# dataset = load_dataset('wikitext', 'wikitext-2-raw-v1', split='train[:1%]')
-# tokenized_dataset = dataset.map(
-#     tokenize_and_label,
-#     batched=True,
-#     remove_columns=dataset.column_names
-# )
-# tokenized_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
+# Create a custom dataset with one sample
+class SingleSampleDataset(Dataset):
+    def __init__(self, sample, tokenizer):
+        self.sample = sample
+        self.tokenizer = tokenizer
+
+    def __len__(self):
+        return 1
+
+    def __getitem__(self, idx):
+        text = self.sample['text']
+        adapter_names = torch.tensor([9000 + (layer_idx * 10) for layer_idx in range(12)])
+
+        # Tokenize the text
+        encoding = self.tokenizer(
+            text,
+            return_tensors='pt',
+            padding='max_length',
+            truncation=True,
+            max_length=128
+        )
+        input_ids = encoding['input_ids'].squeeze(0)  # Remove batch dimension
+        attention_mask = encoding['attention_mask'].squeeze(0)
+
+        # Labels are the same as input_ids for language modeling
+        labels = input_ids.clone()
+
+        return {
+            'input_ids': input_ids,
+            'attention_mask': attention_mask,
+            'labels': labels,
+            'adapter_names': adapter_names
+        }
+
+# Instantiate the dataset
+dataset = SingleSampleDataset(sample, tokenizer)
+
+# Create a wrapper for the model
+class CustomModelWrapper(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def decode_adapter_names(self, adapter_names_tensor):
+        """
+        Converts tensor of shape [batch_size, num_layers] to list of dictionaries
+        Each value is converted from format "9XXY" to "layer_XX_adapter_Y"
+        """
+        # Move tensor to CPU and convert to string format
+        batch_size, num_layers = adapter_names_tensor.shape
+        adapter_names_list = []
+        
+        # Process each item in the batch
+        for batch_idx in range(batch_size):
+            adapter_dict = {}
+            # Process each layer
+            for layer_idx in range(num_layers):
+                code = str(adapter_names_tensor[batch_idx, layer_idx].item())  # e.g., "9010"
+                layer_num = code[1:3]  # "01"
+                adapter_num = code[3]   # "0"
+                adapter_dict[int(layer_num)] = f"layer_{int(layer_num)}_adapter_{int(adapter_num)}"
+            
+            adapter_names_list.append(adapter_dict)
+            
+        # If batch size is 1, return just the dictionary instead of a list
+        return adapter_names_list
+
+    def forward(self, input_ids=None, attention_mask=None, labels=None, adapter_names=None, **kwargs):
+        # Remove adapter_names from device if it exists
+        if adapter_names is not None:
+            # Convert the tensor format to dictionary format
+            adapter_dict = self.decode_adapter_names(adapter_names)
+            # Remove the tensor format from inputs
+            adapter_names = None
+            # Add the dictionary format to kwargs
+            kwargs['adapter_names'] = adapter_dict
+
+        return self.model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=labels,
+            **kwargs
+        )
+
+model = CustomModelWrapper(model)
 
 
-# # Define training arguments
-# training_args = TrainingArguments(
-#     output_dir='./results',
-#     num_train_epochs=1,
-#     per_device_train_batch_size=1,
-#     per_device_eval_batch_size=1,
-#     logging_steps=10,
-#     eval_strategy="epoch",
-#     fp16=True,
-#     remove_unused_columns=False,
-#     # gradient_accumulation_steps=4,    # Added for better memory management
-#     learning_rate=2e-4,              # Added specific learning rate
-#     warmup_steps=100,                # Added warmup steps
-#     weight_decay=0.01,               # Added weight decay
-#     save_strategy="no",      # Disable all saving
-#     save_steps=None,         # No saving at specific steps
-#     save_total_limit=0,      # Don't keep any checkpoints
-#     report_to="none",        # Disable wandb/tensorboard/etc logging
-# )
 
-# # Initialize the Trainer with the custom data collator
-# trainer = Trainer(
-#     model=model,
-#     args=training_args,
-#     train_dataset=tokenized_dataset,
-#     eval_dataset=tokenized_dataset
-# )
+# Subclass Trainer to pass adapter_names
+from transformers import Trainer
 
-# # Start training
-# trainer.train()
+class CustomTrainer(Trainer):
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        # Extract adapter_names from inputs
+        # Ensure adapter_names is included when calling model
+        outputs = model(**inputs)
+        loss = outputs.loss if isinstance(outputs, tuple) else outputs['loss']
+        return (loss, outputs) if return_outputs else loss
+
+# Set up training arguments
+training_args = TrainingArguments(
+    output_dir='./results',
+    num_train_epochs=3,
+    per_device_train_batch_size=1,
+    logging_steps=1,
+    save_steps=10,
+    save_total_limit=2,
+    learning_rate=5e-5,
+    remove_unused_columns=False,  # Important to prevent dropping 'adapter_names',
+)
+
+# Initialize the trainer
+trainer = CustomTrainer(
+    model=model,
+    args=training_args,
+    train_dataset=dataset,
+)
+
+# Train the model
+trainer.train()

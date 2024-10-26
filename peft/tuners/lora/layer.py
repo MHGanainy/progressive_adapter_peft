@@ -357,38 +357,64 @@ class LoraLayer(BaseTunerLayer):
             if self.use_dora.get(adapter_name, False):
                 msg = "Cannot pass `adapter_names` when DoRA is enabled."
                 raise ValueError(msg)
-
-    def _mixed_batch_forward(
-        self, x: torch.Tensor, *args: Any, adapter_names: list[str], **kwargs: Any
-    ) -> torch.Tensor:
-        # This is a special method that handles the case when users pass the argument `adapter_names`. This is an
-        # extra argument that allows mixing different adapters in the same batch at inference time.
+    def _mixed_batch_forward(self, x: torch.Tensor, *args: Any, adapter_names: list[str], **kwargs: Any) -> torch.Tensor:
         result = self.base_layer(x, *args, **kwargs)
         torch_result_dtype = result.dtype
 
         unique_adapters = set(adapter_names)
         sub_batch_indices_list = []
         for adapter in unique_adapters:
-            sub_batch_indices_list.append([index for index, item in enumerate(adapter_names) if item == adapter])
+            sub_batch_indices = [index for index, item in enumerate(adapter_names) if item == adapter]
+            sub_batch_indices_list.append((adapter, sub_batch_indices))
 
-        for i, active_adapter in enumerate(unique_adapters):
-            if active_adapter == "__base__":
+        for adapter_name, indices in sub_batch_indices_list:
+            if adapter_name == "__base__":
                 continue
-            if active_adapter not in self.lora_A.keys():
+            if adapter_name not in self.lora_A.keys():
                 continue
 
-            lora_A = self.lora_A[active_adapter]
-            lora_B = self.lora_B[active_adapter]
-            dropout = self.lora_dropout[active_adapter]
-            scaling = self.scaling[active_adapter]
+            lora_A = self.lora_A[adapter_name]
+            lora_B = self.lora_B[adapter_name]
+            dropout = self.lora_dropout[adapter_name]
+            scaling = self.scaling[adapter_name]
 
-            # getting the sub-batch, passing it to LoRA layers and updating the corresponding indices of the linear
-            # layer output
-            sub_batch = x[sub_batch_indices_list[i]].to(lora_A.weight.dtype)
-            lora_output = lora_B(lora_A(dropout(sub_batch))) * scaling
-            result[sub_batch_indices_list[i]] += lora_output.to(torch_result_dtype)
+            sub_x = x[indices].to(lora_A.weight.dtype)
+            lora_output = lora_B(lora_A(dropout(sub_x))) * scaling
+            result[indices] += lora_output.to(torch_result_dtype)
 
         return result
+
+    # def _mixed_batch_forward(
+    #     self, x: torch.Tensor, *args: Any, adapter_names: list[str], **kwargs: Any
+    # ) -> torch.Tensor:
+    #     # This is a special method that handles the case when users pass the argument `adapter_names`. This is an
+    #     # extra argument that allows mixing different adapters in the same batch at inference time.
+    #     result = self.base_layer(x, *args, **kwargs)
+    #     torch_result_dtype = result.dtype
+
+    #     unique_adapters = set(adapter_names)
+    #     sub_batch_indices_list = []
+    #     for adapter in unique_adapters:
+    #         sub_batch_indices_list.append([index for index, item in enumerate(adapter_names) if item == adapter])
+
+    #     for i, active_adapter in enumerate(unique_adapters):
+    #         if active_adapter == "__base__":
+    #             continue
+    #         if active_adapter not in self.lora_A.keys():
+    #             continue
+
+    #         lora_A = self.lora_A[active_adapter]
+    #         lora_B = self.lora_B[active_adapter]
+    #         dropout = self.lora_dropout[active_adapter]
+    #         scaling = self.scaling[active_adapter]
+
+    #         # getting the sub-batch, passing it to LoRA layers and updating the corresponding indices of the linear
+    #         # layer output
+    #         sub_batch = x[sub_batch_indices_list[i]].to(lora_A.weight.dtype)
+    #         lora_output = lora_B(lora_A(dropout(sub_batch))) * scaling
+    #         result[sub_batch_indices_list[i]] += lora_output.to(torch_result_dtype)
+
+    #     return result
 
 
 # Below code is based on https://github.com/microsoft/LoRA/blob/main/loralib/layers.py
@@ -422,6 +448,9 @@ class Linear(nn.Module, LoraLayer):
         self.fan_in_fan_out = fan_in_fan_out
 
         self._active_adapter = adapter_name
+        parts = adapter_name.split('_')
+        self.layer_idx = int(parts[1])
+        self.adapter_idx = int(parts[3])
         self.update_layer(
             adapter_name,
             r,
@@ -571,7 +600,9 @@ class Linear(nn.Module, LoraLayer):
                 self.unmerge()
             result = self.base_layer(x, *args, **kwargs)
         elif adapter_names is not None:
-            result = self._mixed_batch_forward(x, *args, adapter_names=adapter_names, **kwargs)
+            # Extract adapter names for this layer using self.layer_idx
+            layer_adapter_names = [sample_adapter_names.get(self.layer_idx, "__base__") for sample_adapter_names in adapter_names]
+            result = self._mixed_batch_forward(x, *args, adapter_names=layer_adapter_names, **kwargs)
         elif self.merged:
             result = self.base_layer(x, *args, **kwargs)
         else:
