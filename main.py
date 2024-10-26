@@ -355,3 +355,4 @@ for name, param in model.named_parameters():
 # Print the list of modules with unchanged parameters
 for module_name in sorted(unchanged_modules):
     print(module_name)
+# Proof of concept
