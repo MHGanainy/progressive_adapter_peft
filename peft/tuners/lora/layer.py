@@ -40,6 +40,8 @@ class LoraLayer(BaseTunerLayer):
 
     def __init__(self, base_layer: nn.Module, ephemeral_gpu_offload: bool = False, **kwargs) -> None:
         self.base_layer = base_layer
+        self.layer_idx = None
+        self.adapter_idx = None
         self.r = {}
         self.lora_alpha = {}
         self.scaling = {}
@@ -108,7 +110,9 @@ class LoraLayer(BaseTunerLayer):
         # This code works for linear layers, override for other layer types
         if r <= 0:
             raise ValueError(f"`r` should be a positive integer value but the value passed is {r}")
-
+        parts = adapter_name.split('_')
+        self.layer_idx = int(parts[1])
+        self.adapter_idx = int(parts[3])
         self.r[adapter_name] = r
         self.lora_alpha[adapter_name] = lora_alpha
         if lora_dropout > 0.0:

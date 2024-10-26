@@ -6,6 +6,7 @@ from peft import LoraConfig, get_peft_model
 from peft.tuners.lora import LoraLayer
 from datasets import load_dataset
 import torch
+import json
 
 # Load GPT-2 tokenizer and model
 tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
@@ -17,61 +18,11 @@ if tokenizer.pad_token is None:
     tokenizer.pad_token_id = tokenizer.eos_token_id
     tokenizer.padding_side = 'left'
 
-# Define the adapter configurations with adapter names reflecting the layers
-adapter_configs = [
-    # Adapter for layers 0-3
-    {
-        'adapter_name': 'adapter_layers_0_3',
-        'layers_to_transform': list(range(0, 4)),
-        'r': 64,
-        'lora_alpha': 128,
-        'lora_dropout': 0.1,
-    },
-    # Adapters for layers 4-7 (2 adapters per layer)
-    {
-        'adapter_name': 'adapter_layers_4_7_a',
-        'layers_to_transform': list(range(4, 8)),
-        'r': 32,
-        'lora_alpha': 64,
-        'lora_dropout': 0.05,
-    },
-    {
-        'adapter_name': 'adapter_layers_4_7_b',
-        'layers_to_transform': list(range(4, 8)),
-        'r': 32,
-        'lora_alpha': 64,
-        'lora_dropout': 0.05,
-    },
-    # Adapters for layers 8-11 (4 adapters per layer)
-    {
-        'adapter_name': 'adapter_layers_8_11_a',
-        'layers_to_transform': list(range(8, 12)),
-        'r': 16,
-        'lora_alpha': 32,
-        'lora_dropout': 0.0,
-    },
-    {
-        'adapter_name': 'adapter_layers_8_11_b',
-        'layers_to_transform': list(range(8, 12)),
-        'r': 16,
-        'lora_alpha': 32,
-        'lora_dropout': 0.0,
-    },
-    {
-        'adapter_name': 'adapter_layers_8_11_c',
-        'layers_to_transform': list(range(8, 12)),
-        'r': 16,
-        'lora_alpha': 32,
-        'lora_dropout': 0.0,
-    },
-    {
-        'adapter_name': 'adapter_layers_8_11_d',
-        'layers_to_transform': list(range(8, 12)),
-        'r': 16,
-        'lora_alpha': 32,
-        'lora_dropout': 0.0,
-    },
-]
+with open('config.json', 'r') as f:
+    loaded_configs = json.load(f)
+
+# Access the configurations
+adapter_configs = loaded_configs['adapter_configs']
 
 def create_lora_config(adapter_cfg):
     return LoraConfig(
@@ -95,7 +46,7 @@ for adapter_cfg in adapter_configs[1:]:
     peft_config = create_lora_config(adapter_cfg)
     model.add_adapter(adapter_cfg['adapter_name'], peft_config)
 
-print(model)
+# print(model)
 
 def print_model_adapters(model):
     """
@@ -116,7 +67,7 @@ def print_model_adapters(model):
                 print(f"      - Dropout: {lora_dropout}")
             print()
 
-# print_model_adapters(model)
+print_model_adapters(model)
 
 # # Enhanced tokenization function that creates labels for causal LM
 # def tokenize_and_label(examples):
