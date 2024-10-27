@@ -214,7 +214,7 @@ data_collator = DataCollatorWithAdapterNames(tokenizer=tokenizer, mlm=False)
 
 print("Splitting training data by court...")
 train_court_datasets = split_dataset_by_court(train_dataset)
-batch_size = 16  # Set your desired batch size
+batch_size = 8  # Set your desired batch size
 train_dataloaders = create_dataloaders(train_court_datasets, batch_size=batch_size, shuffle=True)
 train_batches = get_combined_dataloader(train_dataloaders)
 
@@ -315,7 +315,7 @@ for epoch in range(num_epochs):
             avg_loss = batch_loss / accumulation_steps
             current_lr = scheduler.get_last_lr()[0]
 
-            print(f"Optimizer Step {optimizer_step_count}/{total_optimizer_steps}, Loss: {avg_loss:.4f}, LR: {current_lr:.6f}")
+            # print(f"Optimizer Step {optimizer_step_count}/{total_optimizer_steps}, Loss: {avg_loss:.4f}, LR: {current_lr:.6f}")
 
             # Reset batch_loss accumulator
             batch_loss = 0.0
