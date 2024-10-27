@@ -4,13 +4,12 @@ import random
 import numpy as np
 from torch.utils.data import DataLoader
 from transformers import (
-    GPT2Tokenizer,
-    GPT2LMHeadModel,
-    DataCollatorForLanguageModeling,
+    AutoTokenizer,
     AutoModelForCausalLM,
-    AutoTokenizer
+    DataCollatorForLanguageModeling,
+    get_cosine_schedule_with_warmup  # Import the scheduler
 )
-from datasets import load_dataset, Dataset
+from datasets import load_dataset
 from peft import LoraConfig, get_peft_model
 from peft.tuners.lora import LoraLayer
 import json
@@ -218,26 +217,39 @@ eval_batches = get_combined_dataloader(eval_dataloaders)
 
 
 # Define training parameters
-num_epochs = 5
-learning_rate = 5e-5
-accumulation_steps = 4  # Adjust as needed
+num_epochs = 1
+learning_rate = 2e-5
+accumulation_steps = 8  # Adjust as needed
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 model.to(device)
 scaler = GradScaler()
 
+# Calculate total optimizer steps
+optimizer_steps_per_epoch = (len(train_batches) + accumulation_steps - 1) // accumulation_steps
+total_optimizer_steps = optimizer_steps_per_epoch * num_epochs
+
+# Scheduler: Warmup 10% of total steps and use cosine schedule
+num_warmup_steps = int(0.1 * total_optimizer_steps)
+scheduler = get_cosine_schedule_with_warmup(
+    optimizer,
+    num_warmup_steps=num_warmup_steps,
+    num_training_steps=total_optimizer_steps
+)
+
 # Training loop
-total_steps = num_epochs * len(train_batches)
-step_count = 0
+optimizer_step_count = 0
+
+pbar = tqdm(total=total_optimizer_steps, desc="Training")
 
 for epoch in range(num_epochs):
     model.train()
     epoch_loss = 0.0
     optimizer.zero_grad()
     random.shuffle(train_batches)
-    pbar = tqdm(enumerate(train_batches), total=len(train_batches), desc=f"Epoch {epoch+1}")
-    for step, batch in pbar:
+    batch_loss = 0.0  # Reset batch loss at the start of each epoch
+    for step, batch in enumerate(train_batches):
         input_ids = batch['input_ids'].to(device)
         attention_mask = batch['attention_mask'].to(device)
         labels = batch['labels'].to(device)
@@ -270,35 +282,43 @@ for epoch in range(num_epochs):
             loss = outputs.loss
 
         loss_value = loss.item()  # Get the loss value before dividing
+        batch_loss += loss_value  # Accumulate loss over accumulation steps
+        epoch_loss += loss_value  # Accumulate total loss for the epoch
 
         loss = loss / accumulation_steps  # Normalize loss
-
         scaler.scale(loss).backward()
 
-        if (step + 1) % accumulation_steps == 0:
+        if (step + 1) % accumulation_steps == 0 or (step + 1) == len(train_batches):
+            # Unscale gradients
+            scaler.unscale_(optimizer)
+            # Clip gradients
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            # Optimizer step
             scaler.step(optimizer)
             scaler.update()
             optimizer.zero_grad()
+            optimizer_step_count += 1  # Increment optimizer step count
 
-        epoch_loss += loss_value  # Accumulate the original loss value
+            # Scheduler step
+            scheduler.step()  # Update the learning rate
 
-        step_count += 1
+            # Calculate average loss over accumulation steps
+            avg_loss = batch_loss / accumulation_steps
+            current_lr = scheduler.get_last_lr()[0]
 
-        # Print loss every 2 steps
-        if (step + 1) % 2 == 0:
-            print(f"Step {step_count}, Loss: {loss_value:.4f}")
+            print(f"Optimizer Step {optimizer_step_count}/{total_optimizer_steps}, Loss: {avg_loss:.4f}, LR: {current_lr:.6f}")
 
-        # Update tqdm progress bar
-        pbar.set_postfix({'loss': f"{loss_value:.4f}"})
+            # Reset batch_loss accumulator
+            batch_loss = 0.0
 
-    # Handle remaining gradients
-    if (step + 1) % accumulation_steps != 0:
-        scaler.step(optimizer)
-        scaler.update()
-        optimizer.zero_grad()
+            # Update tqdm progress bar
+            pbar.update(1)
+            pbar.set_postfix({'loss': f"{avg_loss:.4f}", 'lr': f"{current_lr:.6f}"})
 
-    average_loss = epoch_loss / len(train_batches)
-    print(f"Epoch {epoch +1}, Average Loss: {average_loss:.4f}")
+    average_epoch_loss = epoch_loss / len(train_batches)
+    print(f"Epoch {epoch +1}, Average Loss: {average_epoch_loss:.4f}")
+
+pbar.close()
 
 # Evaluation loop
 print("\nStarting evaluation...")
