@@ -34,10 +34,15 @@ torch.backends.cudnn.benchmark = False
 def split_dataset_by_court(dataset):
     court_datasets = {}
     courts = set(dataset['court'])
+
     for court in courts:
-        # Filter dataset for this court
-        court_dataset = dataset.filter(lambda example: example['court'] == court)
+        # Use the 'num_proc' parameter to parallelize the filtering
+        court_dataset = dataset.filter(
+            lambda example: example['court'] == court,
+            batch_size=10000,
+        )
         court_datasets[court] = court_dataset
+
     return court_datasets
 
 def create_dataloaders(court_datasets, batch_size, shuffle=True):
@@ -59,9 +64,14 @@ import itertools
 
 def get_combined_dataloader(dataloaders):
     all_batches = []
-    for dataloader in dataloaders.values():
-        for batch in dataloader:
-            all_batches.append(batch)
+    total_dataloaders = len(dataloaders)
+    
+    with tqdm(total=total_dataloaders, desc='Processing Dataloaders', unit='dataloader') as pbar:
+        for dataloader in dataloaders.values():
+            for batch in dataloader:
+                all_batches.append(batch)
+            pbar.update(1)
+    
     # Shuffle all batches
     random.shuffle(all_batches)
     return all_batches
@@ -177,11 +187,10 @@ def prepare_dataset(dataset_split, split="train"):
 
 
 print("Preprocessing training data...")
-train_dataset = prepare_dataset(dataset["train"].select(range(0,10)), "train")
+train_dataset = prepare_dataset(dataset["train"], "train")
 
 print("Preprocessing validation data...")
-eval_dataset = prepare_dataset(dataset["validation"].select(range(0,10)), "validation")
-
+eval_dataset = prepare_dataset(dataset["validation"], "validation")
 # Define the data collator
 class DataCollatorWithAdapterNames(DataCollatorForLanguageModeling):
     def __call__(self, features):
@@ -205,7 +214,7 @@ data_collator = DataCollatorWithAdapterNames(tokenizer=tokenizer, mlm=False)
 
 print("Splitting training data by court...")
 train_court_datasets = split_dataset_by_court(train_dataset)
-batch_size = 1  # Set your desired batch size
+batch_size = 4  # Set your desired batch size
 train_dataloaders = create_dataloaders(train_court_datasets, batch_size=batch_size, shuffle=True)
 train_batches = get_combined_dataloader(train_dataloaders)
 
@@ -217,7 +226,7 @@ eval_batches = get_combined_dataloader(eval_dataloaders)
 
 
 # Define training parameters
-num_epochs = 1
+num_epochs = 8
 learning_rate = 2e-5
 accumulation_steps = 8  # Adjust as needed
 
