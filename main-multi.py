@@ -21,8 +21,9 @@ from peft import LoraConfig, get_peft_model
 from peft.tuners.lora import LoraLayer
 from generate_config import get_adapter_mapping  # Make sure this module is available
 from tqdm import tqdm
+
+# ---------------------- Custom Batch Sampler ----------------------
 from torch.utils.data import Sampler
-import math
 
 class DistributedAdapterBatchSampler(Sampler):
     def __init__(self, adapter_to_indices, batch_size, num_replicas=None, rank=None, shuffle=True):
@@ -34,10 +35,14 @@ class DistributedAdapterBatchSampler(Sampler):
         self.rank = rank
         self.batch_size = batch_size
         self.shuffle = shuffle
-        self.batches = []
+        self.adapter_to_indices = adapter_to_indices  # Save for reshuffling
+        self.seed = 42  # You can set this to any integer
+        self.epoch = 0
+        self.create_batches()
 
-        # Create batches for each adapter configuration
-        for indices in adapter_to_indices.values():
+    def create_batches(self):
+        self.batches = []
+        for indices in self.adapter_to_indices.values():
             # Shuffle indices within each adapter group
             if self.shuffle:
                 random.shuffle(indices)
@@ -52,16 +57,22 @@ class DistributedAdapterBatchSampler(Sampler):
         self.total_size = len(self.batches)
         self.batches = self.batches[self.rank::self.num_replicas]
 
+    def set_epoch(self, epoch):
+        # Set the random seed based on the epoch
+        self.epoch = epoch
+        random.seed(self.seed + epoch)
+        # Recreate batches with new shuffling
+        self.create_batches()
+
     def __iter__(self):
         return iter(self.batches)
 
     def __len__(self):
         return len(self.batches)
+
+# ---------------------- Argument Parsing and Setup ----------------------
 def parse_args():
     parser = argparse.ArgumentParser()
-    # Remove the local_rank argument
-    # parser.add_argument('--local_rank', type=int, default=-1, help='Local rank for distributed training')
-    # Add any other arguments your script requires
     args = parser.parse_args()
     return args
 
@@ -97,6 +108,7 @@ def set_seed(seed):
 
 set_seed(42)
 
+# ---------------------- Model and Tokenizer Setup ----------------------
 # Load GPT-2 tokenizer and model
 tokenizer = AutoTokenizer.from_pretrained('openai-community/gpt2-xl')
 model = AutoModelForCausalLM.from_pretrained('openai-community/gpt2-xl', attn_implementation="flash_attention_2")
@@ -149,6 +161,7 @@ def get_lora_layers(model):
 
 lora_layers = get_lora_layers(model)
 
+# ---------------------- Dataset Preparation ----------------------
 # Create a mapping from dataset_name to court code
 dataset_name_to_court = {
     'santoshtyss/uk_courts_cases': 'UKC',
@@ -224,7 +237,7 @@ if is_main_process:
     print("Preprocessing validation data...")
 eval_dataset = prepare_dataset(dataset["validation"], "validation")
 
-# Define the data collator
+# ---------------------- Data Collator ----------------------
 class DataCollatorWithAdapterNames(DataCollatorForLanguageModeling):
     def __call__(self, features):
         # Extract adapter_names and remove from features
@@ -242,6 +255,8 @@ class DataCollatorWithAdapterNames(DataCollatorForLanguageModeling):
         return batch
 
 data_collator = DataCollatorWithAdapterNames(tokenizer=tokenizer, mlm=False)
+
+# ---------------------- Grouping Indices by Adapter ----------------------
 def group_indices_by_adapter(dataset):
     adapter_to_indices = {}
 
@@ -252,21 +267,25 @@ def group_indices_by_adapter(dataset):
         total = None  # Dataset does not support len()
 
     # Initialize tqdm progress bar
-    with tqdm(enumerate(dataset), total=total, desc='Grouping Adapters', unit='example') as progress_bar:
-        for idx, example in progress_bar:
-            # Serialize adapter names to create a unique key
-            adapter_key = json.dumps(example['adapter_names'], sort_keys=True)
-            
-            # Initialize the list for this adapter_key if it doesn't exist
-            if adapter_key not in adapter_to_indices:
-                adapter_to_indices[adapter_key] = []
-            
-            # Append the current index to the list
-            adapter_to_indices[adapter_key].append(idx)
-    
+    if is_main_process:
+        progress_bar = tqdm(enumerate(dataset), total=total, desc='Grouping Adapters', unit='example')
+    else:
+        progress_bar = enumerate(dataset)
+
+    for idx, example in progress_bar:
+        # Serialize adapter names to create a unique key
+        adapter_key = json.dumps(example['adapter_names'], sort_keys=True)
+
+        # Initialize the list for this adapter_key if it doesn't exist
+        if adapter_key not in adapter_to_indices:
+            adapter_to_indices[adapter_key] = []
+
+        # Append the current index to the list
+        adapter_to_indices[adapter_key].append(idx)
+
     return adapter_to_indices
 
-# Create the DataLoader with DistributedSampler
+# ---------------------- DataLoader Creation ----------------------
 def create_combined_dataloader(dataset, batch_size, shuffle=True):
     adapter_to_indices = group_indices_by_adapter(dataset)
     batch_sampler = DistributedAdapterBatchSampler(
@@ -285,44 +304,49 @@ def create_combined_dataloader(dataset, batch_size, shuffle=True):
     )
     return dataloader
 
+batch_size = 1  # Match the Trainer's per_device_train_batch_size
+accumulation_steps = 2  # Match the Trainer's gradient_accumulation_steps
+num_epochs = 1  # Match the Trainer's num_train_epochs
 
-batch_size = 1  # Adjust based on your GPU memory
 train_dataloader = create_combined_dataloader(train_dataset, batch_size=batch_size, shuffle=True)
 eval_dataloader = create_combined_dataloader(eval_dataset, batch_size=batch_size, shuffle=False)
 
-# Define training parameters
-num_epochs = 1
+# ---------------------- Optimizer and Scheduler ----------------------
 learning_rate = 2e-5
-accumulation_steps = 2  # Adjust as needed
 
 # Prepare the model for distributed training
 device = torch.device(f'cuda:{local_rank}')
 model.to(device)
 model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
-# Optimizer and Scheduler
+# Optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
 scaler = GradScaler()
 
 # Calculate total optimizer steps
-total_training_steps = (len(train_dataloader.dataset) // (batch_size * torch.distributed.get_world_size())) // accumulation_steps * num_epochs
-num_warmup_steps = int(0.1 * total_training_steps)
+steps_per_epoch = len(train_dataloader)
+total_optimizer_steps = steps_per_epoch * num_epochs // accumulation_steps
+
+# Scheduler: Warmup 10% of total steps and use cosine schedule
+num_warmup_steps = int(0.1 * total_optimizer_steps)
 
 scheduler = get_cosine_schedule_with_warmup(
     optimizer,
     num_warmup_steps=num_warmup_steps,
-    num_training_steps=total_training_steps
+    num_training_steps=total_optimizer_steps
 )
 
-# Training loop
+# ---------------------- Training Loop ----------------------
+optimizer_step_count = 0
+
+if is_main_process:
+    pbar = tqdm(total=total_optimizer_steps, desc="Training")
+
 for epoch in range(num_epochs):
     model.train()
     epoch_loss = 0.0
     optimizer.zero_grad()
-    if is_main_process:
-        progress_bar = tqdm(total=len(train_dataloader), desc=f"Epoch {epoch + 1}/{num_epochs}", disable=not is_main_process)
-    else:
-        progress_bar = None
+    train_dataloader.batch_sampler.set_epoch(epoch)
     for step, batch in enumerate(train_dataloader):
         input_ids = batch['input_ids'].to(device, non_blocking=True)
         attention_mask = batch['attention_mask'].to(device, non_blocking=True)
@@ -361,18 +385,21 @@ for epoch in range(num_epochs):
             scaler.update()
             optimizer.zero_grad()
             scheduler.step()
+            optimizer_step_count += 1
 
             if is_main_process:
                 current_lr = scheduler.get_last_lr()[0]
-                progress_bar.set_postfix({'loss': f"{loss_value:.4f}", 'lr': f"{current_lr:.6f}"})
-                progress_bar.update(accumulation_steps)
+                pbar.update(1)
+                pbar.set_postfix({'loss': f"{loss_value:.4f}", 'lr': f"{current_lr:.6f}"})
 
     average_epoch_loss = epoch_loss / len(train_dataloader)
     if is_main_process:
         print(f"Epoch {epoch +1}, Average Loss: {average_epoch_loss:.4f}")
-        progress_bar.close()
 
-# Evaluation loop
+if is_main_process:
+    pbar.close()
+
+# ---------------------- Evaluation Loop ----------------------
 if is_main_process:
     print("\nStarting evaluation...")
 model.eval()
@@ -429,6 +456,3 @@ if is_main_process:
     print(f"Evaluation Loss: {average_eval_loss:.4f}")
     eval_progress_bar.close()
 
-# Optionally save the model (only from the main process)
-if is_main_process:
-    torch.save(model.module.state_dict(), 'model_checkpoint.pt')
