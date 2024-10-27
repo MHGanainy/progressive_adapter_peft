@@ -21,15 +21,54 @@ from peft import LoraConfig, get_peft_model
 from peft.tuners.lora import LoraLayer
 from generate_config import get_adapter_mapping  # Make sure this module is available
 from tqdm import tqdm
+from torch.utils.data import Sampler
+import math
 
+class DistributedAdapterBatchSampler(Sampler):
+    def __init__(self, adapter_to_indices, batch_size, num_replicas=None, rank=None, shuffle=True):
+        if num_replicas is None:
+            num_replicas = torch.distributed.get_world_size()
+        if rank is None:
+            rank = torch.distributed.get_rank()
+        self.num_replicas = num_replicas
+        self.rank = rank
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.batches = []
+
+        # Create batches for each adapter configuration
+        for indices in adapter_to_indices.values():
+            # Shuffle indices within each adapter group
+            if self.shuffle:
+                random.shuffle(indices)
+            # Create batches
+            group_batches = [indices[i:i + self.batch_size] for i in range(0, len(indices), self.batch_size)]
+            self.batches.extend(group_batches)
+
+        if self.shuffle:
+            random.shuffle(self.batches)
+
+        # Partition batches among processes
+        self.total_size = len(self.batches)
+        self.batches = self.batches[self.rank::self.num_replicas]
+
+    def __iter__(self):
+        return iter(self.batches)
+
+    def __len__(self):
+        return len(self.batches)
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--local_rank', type=int, default=-1, help='Local rank for distributed training')
+    # Remove the local_rank argument
+    # parser.add_argument('--local_rank', type=int, default=-1, help='Local rank for distributed training')
+    # Add any other arguments your script requires
     args = parser.parse_args()
     return args
 
 args = parse_args()
-local_rank = args.local_rank
+
+# Get local_rank from environment variable
+local_rank = int(os.environ.get('LOCAL_RANK', 0))
 
 def setup_distributed():
     if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
@@ -37,11 +76,13 @@ def setup_distributed():
         world_size = int(os.environ['WORLD_SIZE'])
         torch.distributed.init_process_group(backend='nccl', init_method='env://')
     else:
-        torch.distributed.init_process_group(backend='nccl', init_method='env://', rank=0, world_size=1)
+        rank = 0
+        world_size = 1
+        torch.distributed.init_process_group(backend='nccl', init_method='env://', rank=rank, world_size=world_size)
     torch.cuda.set_device(local_rank)
+    return rank
 
-setup_distributed()
-rank = torch.distributed.get_rank()
+rank = setup_distributed()
 is_main_process = rank == 0
 
 # Set random seed for reproducibility
@@ -201,28 +242,43 @@ class DataCollatorWithAdapterNames(DataCollatorForLanguageModeling):
         return batch
 
 data_collator = DataCollatorWithAdapterNames(tokenizer=tokenizer, mlm=False)
+def group_indices_by_adapter(dataset):
+    adapter_to_indices = {}
+    for idx, example in enumerate(dataset):
+        adapter_key = json.dumps(example['adapter_names'], sort_keys=True)
+        if adapter_key not in adapter_to_indices:
+            adapter_to_indices[adapter_key] = []
+        adapter_to_indices[adapter_key].append(idx)
+    return adapter_to_indices
 
 # Create the DataLoader with DistributedSampler
 def create_combined_dataloader(dataset, batch_size, shuffle=True):
-    sampler = DistributedSampler(dataset, shuffle=shuffle)
+    adapter_to_indices = group_indices_by_adapter(dataset)
+    batch_sampler = DistributedAdapterBatchSampler(
+        adapter_to_indices,
+        batch_size,
+        num_replicas=torch.distributed.get_world_size(),
+        rank=torch.distributed.get_rank(),
+        shuffle=shuffle
+    )
     dataloader = DataLoader(
         dataset,
-        batch_size=batch_size,
-        sampler=sampler,
+        batch_sampler=batch_sampler,
         collate_fn=data_collator,
         pin_memory=True,
         num_workers=4  # Adjust based on your system
     )
     return dataloader
 
-batch_size = 16  # Adjust based on your GPU memory
+
+batch_size = 2  # Adjust based on your GPU memory
 train_dataloader = create_combined_dataloader(train_dataset, batch_size=batch_size, shuffle=True)
 eval_dataloader = create_combined_dataloader(eval_dataset, batch_size=batch_size, shuffle=False)
 
 # Define training parameters
-num_epochs = 8
+num_epochs = 1
 learning_rate = 2e-5
-accumulation_steps = 2  # Adjust as needed
+accumulation_steps = 1  # Adjust as needed
 
 # Prepare the model for distributed training
 device = torch.device(f'cuda:{local_rank}')
