@@ -214,7 +214,7 @@ data_collator = DataCollatorWithAdapterNames(tokenizer=tokenizer, mlm=False)
 
 print("Splitting training data by court...")
 train_court_datasets = split_dataset_by_court(train_dataset)
-batch_size = 4  # Set your desired batch size
+batch_size = 16  # Set your desired batch size
 train_dataloaders = create_dataloaders(train_court_datasets, batch_size=batch_size, shuffle=True)
 train_batches = get_combined_dataloader(train_dataloaders)
 
@@ -226,9 +226,9 @@ eval_batches = get_combined_dataloader(eval_dataloaders)
 
 
 # Define training parameters
-num_epochs = 8
+num_epochs = 1
 learning_rate = 2e-5
-accumulation_steps = 8  # Adjust as needed
+accumulation_steps = 1  # Adjust as needed
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
