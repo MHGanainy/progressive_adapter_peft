@@ -19,8 +19,8 @@ from torch import nn
 import copy  # Import copy module for deep copying
 
 # Load GPT-2 tokenizer and model
-tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-model = GPT2LMHeadModel.from_pretrained('gpt2')
+tokenizer = GPT2Tokenizer.from_pretrained('openai-community/gpt2-xl')
+model = GPT2LMHeadModel.from_pretrained('openai-community/gpt2-xl')
 
 # Set padding token if not present
 if tokenizer.pad_token is None:
@@ -124,30 +124,30 @@ samples = [
         'text': 'Hello, how are you?',
         'adapter_names': {
             # Layers 0-3 use 'layer_0_adapter_0' in all samples
-            **{str(i): f'layer_{i}_adapter_0' for i in range(4)},  # layers 0-3
-            **{str(i): f'layer_{i}_adapter_0' for i in range(4, 12)}
+            **{str(i): f'layer_{i}_adapter_0' for i in range(16)},  # layers 0-3
+            **{str(i): f'layer_{i}_adapter_0' for i in range(16, 48)}
         }
     },
     {
         'text': 'What is the weather today?',
         'adapter_names': {
-            **{str(i): f'layer_{i}_adapter_0' for i in range(4)},  # layers 0-3
-            **{str(i): f'layer_{i}_adapter_0' for i in range(4, 12)}
+            **{str(i): f'layer_{i}_adapter_0' for i in range(16)},  # layers 0-3
+            **{str(i): f'layer_{i}_adapter_0' for i in range(16, 48)}
         }
     },
     # Second batch samples (Batch 2)
     {
         'text': 'Tell me a joke.',
         'adapter_names': {
-            **{str(i): f'layer_{i}_adapter_0' for i in range(4)},  # layers 0-3
-            **{str(i): f'layer_{i}_adapter_1' for i in range(4, 12)}
+            **{str(i): f'layer_{i}_adapter_0' for i in range(16)},  # layers 0-3
+            **{str(i): f'layer_{i}_adapter_1' for i in range(16, 48)}
         }
     },
     {
         'text': 'How does a computer work?',
         'adapter_names': {
-            **{str(i): f'layer_{i}_adapter_0' for i in range(4)},  # layers 0-3
-            **{str(i): f'layer_{i}_adapter_1' for i in range(4, 12)}
+            **{str(i): f'layer_{i}_adapter_0' for i in range(16)},  # layers 0-3
+            **{str(i): f'layer_{i}_adapter_1' for i in range(16, 48)}
         }
     },
 ]
