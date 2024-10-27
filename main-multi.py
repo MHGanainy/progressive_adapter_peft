@@ -244,11 +244,26 @@ class DataCollatorWithAdapterNames(DataCollatorForLanguageModeling):
 data_collator = DataCollatorWithAdapterNames(tokenizer=tokenizer, mlm=False)
 def group_indices_by_adapter(dataset):
     adapter_to_indices = {}
-    for idx, example in enumerate(dataset):
-        adapter_key = json.dumps(example['adapter_names'], sort_keys=True)
-        if adapter_key not in adapter_to_indices:
-            adapter_to_indices[adapter_key] = []
-        adapter_to_indices[adapter_key].append(idx)
+
+    # Attempt to determine the total number of examples for the progress bar
+    try:
+        total = len(dataset)
+    except TypeError:
+        total = None  # Dataset does not support len()
+
+    # Initialize tqdm progress bar
+    with tqdm(enumerate(dataset), total=total, desc='Grouping Adapters', unit='example') as progress_bar:
+        for idx, example in progress_bar:
+            # Serialize adapter names to create a unique key
+            adapter_key = json.dumps(example['adapter_names'], sort_keys=True)
+            
+            # Initialize the list for this adapter_key if it doesn't exist
+            if adapter_key not in adapter_to_indices:
+                adapter_to_indices[adapter_key] = []
+            
+            # Append the current index to the list
+            adapter_to_indices[adapter_key].append(idx)
+    
     return adapter_to_indices
 
 # Create the DataLoader with DistributedSampler
@@ -271,14 +286,14 @@ def create_combined_dataloader(dataset, batch_size, shuffle=True):
     return dataloader
 
 
-batch_size = 2  # Adjust based on your GPU memory
+batch_size = 1  # Adjust based on your GPU memory
 train_dataloader = create_combined_dataloader(train_dataset, batch_size=batch_size, shuffle=True)
 eval_dataloader = create_combined_dataloader(eval_dataset, batch_size=batch_size, shuffle=False)
 
 # Define training parameters
 num_epochs = 1
 learning_rate = 2e-5
-accumulation_steps = 1  # Adjust as needed
+accumulation_steps = 2  # Adjust as needed
 
 # Prepare the model for distributed training
 device = torch.device(f'cuda:{local_rank}')
@@ -302,7 +317,6 @@ scheduler = get_cosine_schedule_with_warmup(
 # Training loop
 for epoch in range(num_epochs):
     model.train()
-    train_dataloader.sampler.set_epoch(epoch)
     epoch_loss = 0.0
     optimizer.zero_grad()
     if is_main_process:
