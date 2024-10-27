@@ -1,7 +1,7 @@
 {
     "adapter_configs": [
         {
-            "adapter_name": "layer_0_adapter_0",
+            "adapter_name": "layer_0_adapter_AC",
             "layers_to_transform": [
                 0
             ],
@@ -10,7 +10,7 @@
             "lora_dropout": 0.1
         },
         {
-            "adapter_name": "layer_1_adapter_0",
+            "adapter_name": "layer_1_adapter_AC",
             "layers_to_transform": [
                 1
             ],
@@ -19,7 +19,7 @@
             "lora_dropout": 0.1
         },
         {
-            "adapter_name": "layer_2_adapter_0",
+            "adapter_name": "layer_2_adapter_AC",
             "layers_to_transform": [
                 2
             ],
@@ -28,7 +28,7 @@
             "lora_dropout": 0.1
         },
         {
-            "adapter_name": "layer_3_adapter_0",
+            "adapter_name": "layer_3_adapter_AC",
             "layers_to_transform": [
                 3
             ],
@@ -37,7 +37,7 @@
             "lora_dropout": 0.1
         },
         {
-            "adapter_name": "layer_4_adapter_0",
+            "adapter_name": "layer_4_adapter_AC",
             "layers_to_transform": [
                 4
             ],
@@ -46,7 +46,7 @@
             "lora_dropout": 0.1
         },
         {
-            "adapter_name": "layer_5_adapter_0",
+            "adapter_name": "layer_5_adapter_AC",
             "layers_to_transform": [
                 5
             ],
@@ -55,7 +55,7 @@
             "lora_dropout": 0.1
         },
         {
-            "adapter_name": "layer_6_adapter_0",
+            "adapter_name": "layer_6_adapter_AC",
             "layers_to_transform": [
                 6
             ],
@@ -64,7 +64,7 @@
             "lora_dropout": 0.1
         },
         {
-            "adapter_name": "layer_7_adapter_0",
+            "adapter_name": "layer_7_adapter_AC",
             "layers_to_transform": [
                 7
             ],
@@ -73,7 +73,7 @@
             "lora_dropout": 0.1
         },
         {
-            "adapter_name": "layer_8_adapter_0",
+            "adapter_name": "layer_8_adapter_AC",
             "layers_to_transform": [
                 8
             ],
@@ -82,7 +82,7 @@
             "lora_dropout": 0.1
         },
         {
-            "adapter_name": "layer_9_adapter_0",
+            "adapter_name": "layer_9_adapter_AC",
             "layers_to_transform": [
                 9
             ],
@@ -91,7 +91,7 @@
             "lora_dropout": 0.1
         },
         {
-            "adapter_name": "layer_10_adapter_0",
+            "adapter_name": "layer_10_adapter_AC",
             "layers_to_transform": [
                 10
             ],
@@ -100,7 +100,7 @@
             "lora_dropout": 0.1
         },
         {
-            "adapter_name": "layer_11_adapter_0",
+            "adapter_name": "layer_11_adapter_AC",
             "layers_to_transform": [
                 11
             ],
@@ -109,904 +109,1192 @@
             "lora_dropout": 0.1
         },
         {
-            "adapter_name": "layer_12_adapter_0",
+            "adapter_name": "layer_12_adapter_EC",
             "layers_to_transform": [
                 12
             ],
-            "r": 64,
-            "lora_alpha": 128,
-            "lora_dropout": 0.1
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_13_adapter_0",
+            "adapter_name": "layer_13_adapter_EC",
             "layers_to_transform": [
                 13
             ],
-            "r": 64,
-            "lora_alpha": 128,
-            "lora_dropout": 0.1
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_14_adapter_0",
+            "adapter_name": "layer_14_adapter_EC",
             "layers_to_transform": [
                 14
             ],
-            "r": 64,
-            "lora_alpha": 128,
-            "lora_dropout": 0.1
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_15_adapter_0",
+            "adapter_name": "layer_15_adapter_EC",
             "layers_to_transform": [
                 15
             ],
-            "r": 64,
-            "lora_alpha": 128,
-            "lora_dropout": 0.1
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_16_adapter_0",
+            "adapter_name": "layer_16_adapter_EC",
             "layers_to_transform": [
                 16
             ],
             "r": 32,
             "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_16_adapter_1",
+            "adapter_name": "layer_17_adapter_EC",
+            "layers_to_transform": [
+                17
+            ],
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
+        },
+        {
+            "adapter_name": "layer_18_adapter_EC",
+            "layers_to_transform": [
+                18
+            ],
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
+        },
+        {
+            "adapter_name": "layer_19_adapter_EC",
+            "layers_to_transform": [
+                19
+            ],
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
+        },
+        {
+            "adapter_name": "layer_20_adapter_EC",
+            "layers_to_transform": [
+                20
+            ],
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
+        },
+        {
+            "adapter_name": "layer_21_adapter_EC",
+            "layers_to_transform": [
+                21
+            ],
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
+        },
+        {
+            "adapter_name": "layer_22_adapter_EC",
+            "layers_to_transform": [
+                22
+            ],
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
+        },
+        {
+            "adapter_name": "layer_23_adapter_EC",
+            "layers_to_transform": [
+                23
+            ],
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
+        },
+        {
+            "adapter_name": "layer_12_adapter_CC",
+            "layers_to_transform": [
+                12
+            ],
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
+        },
+        {
+            "adapter_name": "layer_13_adapter_CC",
+            "layers_to_transform": [
+                13
+            ],
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
+        },
+        {
+            "adapter_name": "layer_14_adapter_CC",
+            "layers_to_transform": [
+                14
+            ],
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
+        },
+        {
+            "adapter_name": "layer_15_adapter_CC",
+            "layers_to_transform": [
+                15
+            ],
+            "r": 32,
+            "lora_alpha": 64,
+            "lora_dropout": 0.05
+        },
+        {
+            "adapter_name": "layer_16_adapter_CC",
             "layers_to_transform": [
                 16
             ],
             "r": 32,
             "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_17_adapter_0",
+            "adapter_name": "layer_17_adapter_CC",
             "layers_to_transform": [
                 17
             ],
             "r": 32,
             "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_17_adapter_1",
-            "layers_to_transform": [
-                17
-            ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_18_adapter_0",
+            "adapter_name": "layer_18_adapter_CC",
             "layers_to_transform": [
                 18
             ],
             "r": 32,
             "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_18_adapter_1",
-            "layers_to_transform": [
-                18
-            ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_19_adapter_0",
+            "adapter_name": "layer_19_adapter_CC",
             "layers_to_transform": [
                 19
             ],
             "r": 32,
             "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_19_adapter_1",
-            "layers_to_transform": [
-                19
-            ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_20_adapter_0",
+            "adapter_name": "layer_20_adapter_CC",
             "layers_to_transform": [
                 20
             ],
             "r": 32,
             "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_20_adapter_1",
-            "layers_to_transform": [
-                20
-            ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_21_adapter_0",
+            "adapter_name": "layer_21_adapter_CC",
             "layers_to_transform": [
                 21
             ],
             "r": 32,
             "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_21_adapter_1",
-            "layers_to_transform": [
-                21
-            ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_22_adapter_0",
+            "adapter_name": "layer_22_adapter_CC",
             "layers_to_transform": [
                 22
             ],
             "r": 32,
             "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_22_adapter_1",
-            "layers_to_transform": [
-                22
-            ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_23_adapter_0",
+            "adapter_name": "layer_23_adapter_CC",
             "layers_to_transform": [
                 23
             ],
             "r": 32,
             "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.05
         },
         {
-            "adapter_name": "layer_23_adapter_1",
-            "layers_to_transform": [
-                23
-            ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_24_adapter_0",
+            "adapter_name": "layer_24_adapter_ECHR",
             "layers_to_transform": [
                 24
             ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_24_adapter_1",
+            "adapter_name": "layer_25_adapter_ECHR",
+            "layers_to_transform": [
+                25
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_26_adapter_ECHR",
+            "layers_to_transform": [
+                26
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_27_adapter_ECHR",
+            "layers_to_transform": [
+                27
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_28_adapter_ECHR",
+            "layers_to_transform": [
+                28
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_29_adapter_ECHR",
+            "layers_to_transform": [
+                29
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_30_adapter_ECHR",
+            "layers_to_transform": [
+                30
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_31_adapter_ECHR",
+            "layers_to_transform": [
+                31
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_32_adapter_ECHR",
+            "layers_to_transform": [
+                32
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_33_adapter_ECHR",
+            "layers_to_transform": [
+                33
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_34_adapter_ECHR",
+            "layers_to_transform": [
+                34
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_35_adapter_ECHR",
+            "layers_to_transform": [
+                35
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_24_adapter_EUC",
             "layers_to_transform": [
                 24
             ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_25_adapter_0",
+            "adapter_name": "layer_25_adapter_EUC",
             "layers_to_transform": [
                 25
             ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_25_adapter_1",
+            "adapter_name": "layer_26_adapter_EUC",
+            "layers_to_transform": [
+                26
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_27_adapter_EUC",
+            "layers_to_transform": [
+                27
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_28_adapter_EUC",
+            "layers_to_transform": [
+                28
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_29_adapter_EUC",
+            "layers_to_transform": [
+                29
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_30_adapter_EUC",
+            "layers_to_transform": [
+                30
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_31_adapter_EUC",
+            "layers_to_transform": [
+                31
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_32_adapter_EUC",
+            "layers_to_transform": [
+                32
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_33_adapter_EUC",
+            "layers_to_transform": [
+                33
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_34_adapter_EUC",
+            "layers_to_transform": [
+                34
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_35_adapter_EUC",
+            "layers_to_transform": [
+                35
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_24_adapter_IC",
+            "layers_to_transform": [
+                24
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_25_adapter_IC",
             "layers_to_transform": [
                 25
             ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_26_adapter_0",
+            "adapter_name": "layer_26_adapter_IC",
             "layers_to_transform": [
                 26
             ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_26_adapter_1",
+            "adapter_name": "layer_27_adapter_IC",
+            "layers_to_transform": [
+                27
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_28_adapter_IC",
+            "layers_to_transform": [
+                28
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_29_adapter_IC",
+            "layers_to_transform": [
+                29
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_30_adapter_IC",
+            "layers_to_transform": [
+                30
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_31_adapter_IC",
+            "layers_to_transform": [
+                31
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_32_adapter_IC",
+            "layers_to_transform": [
+                32
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_33_adapter_IC",
+            "layers_to_transform": [
+                33
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_34_adapter_IC",
+            "layers_to_transform": [
+                34
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_35_adapter_IC",
+            "layers_to_transform": [
+                35
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_24_adapter_ACC",
+            "layers_to_transform": [
+                24
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_25_adapter_ACC",
+            "layers_to_transform": [
+                25
+            ],
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_26_adapter_ACC",
             "layers_to_transform": [
                 26
             ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_27_adapter_0",
+            "adapter_name": "layer_27_adapter_ACC",
             "layers_to_transform": [
                 27
             ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_27_adapter_1",
-            "layers_to_transform": [
-                27
-            ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_28_adapter_0",
+            "adapter_name": "layer_28_adapter_ACC",
             "layers_to_transform": [
                 28
             ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_28_adapter_1",
-            "layers_to_transform": [
-                28
-            ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_29_adapter_0",
+            "adapter_name": "layer_29_adapter_ACC",
             "layers_to_transform": [
                 29
             ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_29_adapter_1",
-            "layers_to_transform": [
-                29
-            ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_30_adapter_0",
+            "adapter_name": "layer_30_adapter_ACC",
             "layers_to_transform": [
                 30
             ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_30_adapter_1",
-            "layers_to_transform": [
-                30
-            ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_31_adapter_0",
+            "adapter_name": "layer_31_adapter_ACC",
             "layers_to_transform": [
                 31
             ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_31_adapter_1",
-            "layers_to_transform": [
-                31
-            ],
-            "r": 32,
-            "lora_alpha": 64,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_32_adapter_0",
+            "adapter_name": "layer_32_adapter_ACC",
             "layers_to_transform": [
                 32
             ],
             "r": 16,
             "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_32_adapter_1",
-            "layers_to_transform": [
-                32
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_32_adapter_2",
-            "layers_to_transform": [
-                32
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_32_adapter_3",
-            "layers_to_transform": [
-                32
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_33_adapter_0",
+            "adapter_name": "layer_33_adapter_ACC",
             "layers_to_transform": [
                 33
             ],
             "r": 16,
             "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_33_adapter_1",
-            "layers_to_transform": [
-                33
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_33_adapter_2",
-            "layers_to_transform": [
-                33
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_33_adapter_3",
-            "layers_to_transform": [
-                33
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_34_adapter_0",
+            "adapter_name": "layer_34_adapter_ACC",
             "layers_to_transform": [
                 34
             ],
             "r": 16,
             "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_34_adapter_1",
-            "layers_to_transform": [
-                34
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_34_adapter_2",
-            "layers_to_transform": [
-                34
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_34_adapter_3",
-            "layers_to_transform": [
-                34
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_35_adapter_0",
+            "adapter_name": "layer_35_adapter_ACC",
             "layers_to_transform": [
                 35
             ],
             "r": 16,
             "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_35_adapter_1",
-            "layers_to_transform": [
-                35
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_35_adapter_2",
-            "layers_to_transform": [
-                35
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_35_adapter_3",
-            "layers_to_transform": [
-                35
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_36_adapter_0",
+            "adapter_name": "layer_36_adapter_ECHR",
             "layers_to_transform": [
                 36
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_36_adapter_1",
+            "adapter_name": "layer_37_adapter_ECHR",
+            "layers_to_transform": [
+                37
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_38_adapter_ECHR",
+            "layers_to_transform": [
+                38
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_39_adapter_ECHR",
+            "layers_to_transform": [
+                39
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_40_adapter_ECHR",
+            "layers_to_transform": [
+                40
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_41_adapter_ECHR",
+            "layers_to_transform": [
+                41
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_42_adapter_ECHR",
+            "layers_to_transform": [
+                42
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_43_adapter_ECHR",
+            "layers_to_transform": [
+                43
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_44_adapter_ECHR",
+            "layers_to_transform": [
+                44
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_45_adapter_ECHR",
+            "layers_to_transform": [
+                45
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_46_adapter_ECHR",
+            "layers_to_transform": [
+                46
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_47_adapter_ECHR",
+            "layers_to_transform": [
+                47
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_36_adapter_EUC",
             "layers_to_transform": [
                 36
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_36_adapter_2",
+            "adapter_name": "layer_37_adapter_EUC",
+            "layers_to_transform": [
+                37
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_38_adapter_EUC",
+            "layers_to_transform": [
+                38
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_39_adapter_EUC",
+            "layers_to_transform": [
+                39
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_40_adapter_EUC",
+            "layers_to_transform": [
+                40
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_41_adapter_EUC",
+            "layers_to_transform": [
+                41
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_42_adapter_EUC",
+            "layers_to_transform": [
+                42
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_43_adapter_EUC",
+            "layers_to_transform": [
+                43
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_44_adapter_EUC",
+            "layers_to_transform": [
+                44
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_45_adapter_EUC",
+            "layers_to_transform": [
+                45
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_46_adapter_EUC",
+            "layers_to_transform": [
+                46
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_47_adapter_EUC",
+            "layers_to_transform": [
+                47
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_36_adapter_IC",
             "layers_to_transform": [
                 36
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_36_adapter_3",
+            "adapter_name": "layer_37_adapter_IC",
+            "layers_to_transform": [
+                37
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_38_adapter_IC",
+            "layers_to_transform": [
+                38
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_39_adapter_IC",
+            "layers_to_transform": [
+                39
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_40_adapter_IC",
+            "layers_to_transform": [
+                40
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_41_adapter_IC",
+            "layers_to_transform": [
+                41
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_42_adapter_IC",
+            "layers_to_transform": [
+                42
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_43_adapter_IC",
+            "layers_to_transform": [
+                43
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_44_adapter_IC",
+            "layers_to_transform": [
+                44
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_45_adapter_IC",
+            "layers_to_transform": [
+                45
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_46_adapter_IC",
+            "layers_to_transform": [
+                46
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_47_adapter_IC",
+            "layers_to_transform": [
+                47
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_36_adapter_UKC",
             "layers_to_transform": [
                 36
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_37_adapter_0",
+            "adapter_name": "layer_37_adapter_UKC",
             "layers_to_transform": [
                 37
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_37_adapter_1",
+            "adapter_name": "layer_38_adapter_UKC",
+            "layers_to_transform": [
+                38
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_39_adapter_UKC",
+            "layers_to_transform": [
+                39
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_40_adapter_UKC",
+            "layers_to_transform": [
+                40
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_41_adapter_UKC",
+            "layers_to_transform": [
+                41
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_42_adapter_UKC",
+            "layers_to_transform": [
+                42
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_43_adapter_UKC",
+            "layers_to_transform": [
+                43
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_44_adapter_UKC",
+            "layers_to_transform": [
+                44
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_45_adapter_UKC",
+            "layers_to_transform": [
+                45
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_46_adapter_UKC",
+            "layers_to_transform": [
+                46
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_47_adapter_UKC",
+            "layers_to_transform": [
+                47
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_36_adapter_CAC",
+            "layers_to_transform": [
+                36
+            ],
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
+        },
+        {
+            "adapter_name": "layer_37_adapter_CAC",
             "layers_to_transform": [
                 37
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_37_adapter_2",
-            "layers_to_transform": [
-                37
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_37_adapter_3",
-            "layers_to_transform": [
-                37
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_38_adapter_0",
+            "adapter_name": "layer_38_adapter_CAC",
             "layers_to_transform": [
                 38
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_38_adapter_1",
-            "layers_to_transform": [
-                38
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_38_adapter_2",
-            "layers_to_transform": [
-                38
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_38_adapter_3",
-            "layers_to_transform": [
-                38
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_39_adapter_0",
+            "adapter_name": "layer_39_adapter_CAC",
             "layers_to_transform": [
                 39
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_39_adapter_1",
-            "layers_to_transform": [
-                39
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_39_adapter_2",
-            "layers_to_transform": [
-                39
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_39_adapter_3",
-            "layers_to_transform": [
-                39
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_40_adapter_0",
+            "adapter_name": "layer_40_adapter_CAC",
             "layers_to_transform": [
                 40
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_40_adapter_1",
-            "layers_to_transform": [
-                40
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_40_adapter_2",
-            "layers_to_transform": [
-                40
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_40_adapter_3",
-            "layers_to_transform": [
-                40
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_41_adapter_0",
+            "adapter_name": "layer_41_adapter_CAC",
             "layers_to_transform": [
                 41
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_41_adapter_1",
-            "layers_to_transform": [
-                41
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_41_adapter_2",
-            "layers_to_transform": [
-                41
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_41_adapter_3",
-            "layers_to_transform": [
-                41
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_42_adapter_0",
+            "adapter_name": "layer_42_adapter_CAC",
             "layers_to_transform": [
                 42
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_42_adapter_1",
-            "layers_to_transform": [
-                42
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_42_adapter_2",
-            "layers_to_transform": [
-                42
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_42_adapter_3",
-            "layers_to_transform": [
-                42
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_43_adapter_0",
+            "adapter_name": "layer_43_adapter_CAC",
             "layers_to_transform": [
                 43
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_43_adapter_1",
-            "layers_to_transform": [
-                43
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_43_adapter_2",
-            "layers_to_transform": [
-                43
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_43_adapter_3",
-            "layers_to_transform": [
-                43
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_44_adapter_0",
+            "adapter_name": "layer_44_adapter_CAC",
             "layers_to_transform": [
                 44
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_44_adapter_1",
-            "layers_to_transform": [
-                44
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_44_adapter_2",
-            "layers_to_transform": [
-                44
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_44_adapter_3",
-            "layers_to_transform": [
-                44
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_45_adapter_0",
+            "adapter_name": "layer_45_adapter_CAC",
             "layers_to_transform": [
                 45
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_45_adapter_1",
-            "layers_to_transform": [
-                45
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_45_adapter_2",
-            "layers_to_transform": [
-                45
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_45_adapter_3",
-            "layers_to_transform": [
-                45
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_46_adapter_0",
+            "adapter_name": "layer_46_adapter_CAC",
             "layers_to_transform": [
                 46
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         },
         {
-            "adapter_name": "layer_46_adapter_1",
-            "layers_to_transform": [
-                46
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_46_adapter_2",
-            "layers_to_transform": [
-                46
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_46_adapter_3",
-            "layers_to_transform": [
-                46
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_47_adapter_0",
+            "adapter_name": "layer_47_adapter_CAC",
             "layers_to_transform": [
                 47
             ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_47_adapter_1",
-            "layers_to_transform": [
-                47
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_47_adapter_2",
-            "layers_to_transform": [
-                47
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
-        },
-        {
-            "adapter_name": "layer_47_adapter_3",
-            "layers_to_transform": [
-                47
-            ],
-            "r": 16,
-            "lora_alpha": 32,
-            "lora_dropout": 0.1
+            "r": 13,
+            "lora_alpha": 26,
+            "lora_dropout": 0.0
         }
     ]
 }
