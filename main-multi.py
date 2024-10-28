@@ -3,6 +3,7 @@ import os
 import random
 import json
 import math
+import sys
 import multiprocessing
 import numpy as np
 import torch
@@ -21,6 +22,7 @@ from peft import LoraConfig, get_peft_model
 from peft.tuners.lora import LoraLayer
 from generate_config import get_adapter_mapping  # Make sure this module is available
 from tqdm import tqdm
+import traceback
 
 # ---------------------- Custom Batch Sampler ----------------------
 from torch.utils.data import Sampler
@@ -209,6 +211,8 @@ def tokenize_function(examples):
     adapter_names = []
     for court in courts:
         adapter_mapping = get_adapter_mapping(court)
+        if not adapter_mapping:
+            raise ValueError(f"Adapter mapping not found for court: {court}")
         # Convert layer indices to strings for consistency
         adapter_names.append({str(k): v for k, v in adapter_mapping.items()})
     result['adapter_names'] = adapter_names
@@ -259,11 +263,11 @@ def prepare_dataset(dataset_split, split="train"):
 
 if is_main_process:
     print("Preprocessing training data...")
-train_dataset = prepare_dataset(dataset["train"].select(range(10000)), "train")
+train_dataset = prepare_dataset(dataset["train"], "train")
 
 if is_main_process:
     print("Preprocessing validation data...")
-eval_dataset = prepare_dataset(dataset["validation"].select(range(10000)), "validation")
+eval_dataset = prepare_dataset(dataset["validation"], "validation")
 
 # ---------------------- Data Collator ----------------------
 class DataCollatorWithAdapterNames(DataCollatorForLanguageModeling):
@@ -326,7 +330,7 @@ def group_indices_by_adapter(dataset, cache_path):
     return adapter_to_indices
 
 # ---------------------- DataLoader Creation ----------------------
-def create_combined_dataloader(dataset, batch_size,split=None, shuffle=True, drop_last=True):
+def create_combined_dataloader(dataset, batch_size, split=None, shuffle=True, drop_last=True):
     # Determine cache path based on dataset split
     cache_path = train_cache_path if split == "train" else eval_cache_path
 
@@ -339,20 +343,18 @@ def create_combined_dataloader(dataset, batch_size,split=None, shuffle=True, dro
         shuffle=shuffle,
         drop_last=drop_last  # Pass the drop_last parameter
     )
-    
-    total_cpu_cores = multiprocessing.cpu_count() // 2
+
+    total_cpu_cores = multiprocessing.cpu_count()
     num_replicas = torch.distributed.get_world_size()
     num_workers = total_cpu_cores // num_replicas
     num_workers = max(1, num_workers)
-    
+
     dataloader = DataLoader(
         dataset,
         batch_sampler=batch_sampler,
         collate_fn=data_collator,
         pin_memory=True,
-        num_workers=num_workers,  # Adjusted based on system
-        prefetch_factor=4,
-        persistent_workers=True
+        num_workers=0,  # Set to 0 to simplify debugging
     )
     return dataloader
 
@@ -361,7 +363,7 @@ accumulation_steps = 1  # Match the Trainer's gradient_accumulation_steps
 num_epochs = 1  # Match the Trainer's num_train_epochs
 
 train_dataloader = create_combined_dataloader(train_dataset, batch_size=batch_size, split="train", shuffle=True, drop_last=True)
-eval_dataloader = create_combined_dataloader(eval_dataset, batch_size=batch_size, split="eval",shuffle=False, drop_last=True)
+eval_dataloader = create_combined_dataloader(eval_dataset, batch_size=batch_size, split="eval", shuffle=False, drop_last=True)
 
 # ---------------------- Optimizer and Scheduler ----------------------
 learning_rate = 2e-5
@@ -369,7 +371,12 @@ learning_rate = 2e-5
 # Prepare the model for distributed training
 device = torch.device(f'cuda:{local_rank}')
 model.to(device)
-model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
+model = DDP(
+    model,
+    device_ids=[local_rank],
+    output_device=local_rank,
+    find_unused_parameters=True  # Set to True if you have unused parameters
+)
 
 # Optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01, eps=1e-8)
@@ -408,51 +415,58 @@ def distributed_training(model, train_dataloader, optimizer, scheduler, scaler, 
             try:
                 input_ids = batch['input_ids'].to(device, non_blocking=True)
                 attention_mask = batch['attention_mask'].to(device, non_blocking=True)
-                labels = batch['labels'].to(device, non_blocking=True)  # Keep labels in long format
+                labels = batch['labels'].to(device, non_blocking=True)
                 adapter_names_list = batch['adapter_names']
+
+                batch_adapter_names = adapter_names_list[0]
+                # Ensure all samples have the same adapter_names
+                if not all(adapter == batch_adapter_names for adapter in adapter_names_list):
+                    raise ValueError("All samples in the batch must have the same adapter configurations.")
+
+                # Set adapters using precomputed mapping
+                for layer_idx, module in lora_layers.items():
+                    adapter_name = batch_adapter_names.get(layer_idx, None)
+                    if adapter_name:
+                        module.set_adapter(adapter_name)
+
+                with autocast():
+                    outputs = model(
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        labels=labels,
+                    )
+                    loss = outputs.loss
+
+                loss_value = loss.item()
+                epoch_loss += loss_value
+
+                loss = loss / accumulation_steps
+                scaler.scale(loss).backward()
+
+                if (step + 1) % accumulation_steps == 0 or (step + 1) == len(train_dataloader):
+                    scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                    scaler.step(optimizer)
+                    scaler.update()
+                    optimizer.zero_grad()
+                    scheduler.step()
+                    optimizer_step_count += 1
+
+                    if is_main_process:
+                        current_lr = scheduler.get_last_lr()[0]
+                        pbar.update(1)
+                        pbar.set_postfix({'loss': f"{loss_value:.4f}", 'lr': f"{current_lr:.6f}"})
+
             except Exception as e:
-                if is_main_process:
-                    print(f"Error loading batch at step {step}: {e}")
-                continue
-
-            batch_adapter_names = adapter_names_list[0]
-            # Ensure all samples have the same adapter_names
-            if not all(adapter == batch_adapter_names for adapter in adapter_names_list):
-                raise ValueError("All samples in the batch must have the same adapter configurations.")
-
-            # Set adapters using precomputed mapping
-            for layer_idx, module in lora_layers.items():
-                adapter_name = batch_adapter_names.get(layer_idx, None)
-                if adapter_name:
-                    module.set_adapter(adapter_name)
-
-            with autocast():
-                outputs = model(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    labels=labels,
-                )
-                loss = outputs.loss
-
-            loss_value = loss.item()
-            epoch_loss += loss_value
-
-            loss = loss / accumulation_steps
-            scaler.scale(loss).backward()
-
-            if (step + 1) % accumulation_steps == 0 or (step + 1) == len(train_dataloader):
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                scaler.step(optimizer)
-                scaler.update()
-                optimizer.zero_grad()
-                scheduler.step()
-                optimizer_step_count += 1
-
-                if is_main_process:
-                    current_lr = scheduler.get_last_lr()[0]
-                    pbar.update(1)
-                    pbar.set_postfix({'loss': f"{loss_value:.4f}", 'lr': f"{current_lr:.6f}"})
+                # Log the exception in all ranks
+                rank = torch.distributed.get_rank()
+                print(f"Rank {rank}, Step {step} encountered an error: {e}")
+                traceback.print_exc()
+                # Ensure all processes are aware of the exception
+                torch.distributed.barrier()
+                # Clean up
+                torch.distributed.destroy_process_group()
+                sys.exit(1)
 
         average_epoch_loss = epoch_loss / len(train_dataloader)
         if is_main_process:
@@ -460,6 +474,7 @@ def distributed_training(model, train_dataloader, optimizer, scheduler, scaler, 
 
     if is_main_process:
         pbar.close()
+
 # ---------------------- Evaluation Function ----------------------
 def distributed_evaluation(model, eval_dataloader, device, is_main_process):
     """
@@ -468,7 +483,7 @@ def distributed_evaluation(model, eval_dataloader, device, is_main_process):
     model.eval()
     eval_loss = 0.0
     eval_steps = 0
-    
+
     # Initialize progress bar only on main process
     if is_main_process:
         print("\nStarting evaluation...")
@@ -478,35 +493,47 @@ def distributed_evaluation(model, eval_dataloader, device, is_main_process):
 
     with torch.no_grad():
         for batch in eval_dataloader:
-            input_ids = batch['input_ids'].to(device, non_blocking=True)
-            attention_mask = batch['attention_mask'].to(device, non_blocking=True)
-            labels = batch['labels'].to(device, non_blocking=True)
-            adapter_names_list = batch['adapter_names']
+            try:
+                input_ids = batch['input_ids'].to(device, non_blocking=True)
+                attention_mask = batch['attention_mask'].to(device, non_blocking=True)
+                labels = batch['labels'].to(device, non_blocking=True)
+                adapter_names_list = batch['adapter_names']
 
-            batch_adapter_names = adapter_names_list[0]
-            if not all(adapter == batch_adapter_names for adapter in adapter_names_list):
-                raise ValueError("All samples in the batch must have the same adapter configurations.")
+                batch_adapter_names = adapter_names_list[0]
+                if not all(adapter == batch_adapter_names for adapter in adapter_names_list):
+                    raise ValueError("All samples in the batch must have the same adapter configurations.")
 
-            # Set adapters using precomputed mapping
-            for layer_idx, module in lora_layers.items():
-                adapter_name = batch_adapter_names.get(layer_idx, None)
-                if adapter_name:
-                    module.set_adapter(adapter_name)
+                # Set adapters using precomputed mapping
+                for layer_idx, module in lora_layers.items():
+                    adapter_name = batch_adapter_names.get(layer_idx, None)
+                    if adapter_name:
+                        module.set_adapter(adapter_name)
 
-            with autocast():
-                outputs = model(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    labels=labels,
-                )
-                loss = outputs.loss
+                with autocast():
+                    outputs = model(
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        labels=labels,
+                    )
+                    loss = outputs.loss
 
-            loss_value = loss.item()
-            eval_loss += loss_value
-            eval_steps += 1
+                loss_value = loss.item()
+                eval_loss += loss_value
+                eval_steps += 1
 
-            if is_main_process and eval_progress_bar:
-                eval_progress_bar.update(1)
+                if is_main_process and eval_progress_bar:
+                    eval_progress_bar.update(1)
+
+            except Exception as e:
+                # Log the exception in all ranks
+                rank = torch.distributed.get_rank()
+                print(f"Rank {rank} encountered an error during evaluation: {e}")
+                traceback.print_exc()
+                # Ensure all processes are aware of the exception
+                torch.distributed.barrier()
+                # Clean up
+                torch.distributed.destroy_process_group()
+                sys.exit(1)
 
     # Create tensors for distributed reduction
     eval_loss_tensor = torch.tensor(eval_loss, device=device)
@@ -515,25 +542,25 @@ def distributed_evaluation(model, eval_dataloader, device, is_main_process):
     # Gather results from all processes
     torch.distributed.all_reduce(eval_loss_tensor, op=torch.distributed.ReduceOp.SUM)
     torch.distributed.all_reduce(eval_steps_tensor, op=torch.distributed.ReduceOp.SUM)
-    
+
     # Ensure all processes are synced before calculating final metrics
     torch.distributed.barrier()
-    
+
     # Compute average_eval_loss (now available to all processes)
     average_eval_loss = eval_loss_tensor.item() / eval_steps_tensor.item()
-    
+
     if is_main_process:
         if eval_progress_bar:
             eval_progress_bar.close()
-        
+
         perplexity = math.exp(average_eval_loss)
-        
+
         print(f"Perplexity: {perplexity:.4f}")
         print(f"Evaluation Loss: {average_eval_loss:.4f}")
-    
+
     # Final barrier to ensure all processes are done
     torch.distributed.barrier()
-    
+
     return average_eval_loss
 
 # ---------------------- Main Execution ----------------------
@@ -541,30 +568,43 @@ def main():
     """
     Main function to handle training and evaluation.
     """
-    # ---------------------- Training ----------------------
-    distributed_training(
-        model=model,
-        train_dataloader=train_dataloader,
-        optimizer=optimizer,
-        scheduler=scheduler,
-        scaler=scaler,
-        device=device,
-        is_main_process=is_main_process,
-        num_epochs=num_epochs,
-        accumulation_steps=accumulation_steps
-    )
-    
-    # ---------------------- Evaluation ----------------------
-    average_eval_loss = distributed_evaluation(
-        model=model,
-        eval_dataloader=eval_dataloader,
-        device=device,
-        is_main_process=is_main_process
-    )
+    try:
+        # ---------------------- Training ----------------------
+        distributed_training(
+            model=model,
+            train_dataloader=train_dataloader,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            scaler=scaler,
+            device=device,
+            is_main_process=is_main_process,
+            num_epochs=num_epochs,
+            accumulation_steps=accumulation_steps
+        )
 
-    # ---------------------- Clean Up ----------------------
-    # Clean up distributed process group
-    torch.distributed.destroy_process_group()
+        # ---------------------- Evaluation ----------------------
+        average_eval_loss = distributed_evaluation(
+            model=model,
+            eval_dataloader=eval_dataloader,
+            device=device,
+            is_main_process=is_main_process
+        )
+
+    except Exception as e:
+        # Log the exception in all ranks
+        rank = torch.distributed.get_rank()
+        print(f"Rank {rank} encountered an exception: {e}")
+        traceback.print_exc()
+        # Ensure all processes are aware of the exception
+        torch.distributed.barrier()
+        # Clean up
+        torch.distributed.destroy_process_group()
+        sys.exit(1)
+
+    finally:
+        # Ensure the process group is destroyed
+        if torch.distributed.is_initialized():
+            torch.distributed.destroy_process_group()
 
 if __name__ == "__main__":
     main()
