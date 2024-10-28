@@ -26,7 +26,7 @@ from tqdm import tqdm
 from torch.utils.data import Sampler
 
 class DistributedAdapterBatchSampler(Sampler):
-    def __init__(self, adapter_to_indices, batch_size, num_replicas=None, rank=None, shuffle=True):
+    def __init__(self, adapter_to_indices, batch_size, num_replicas=None, rank=None, shuffle=True, drop_last=False):
         if num_replicas is None:
             num_replicas = torch.distributed.get_world_size()
         if rank is None:
@@ -35,6 +35,7 @@ class DistributedAdapterBatchSampler(Sampler):
         self.rank = rank
         self.batch_size = batch_size
         self.shuffle = shuffle
+        self.drop_last = drop_last  # Added drop_last parameter
         self.adapter_to_indices = adapter_to_indices  # Save for reshuffling
         self.seed = 42  # You can set this to any integer
         self.epoch = 0
@@ -48,6 +49,8 @@ class DistributedAdapterBatchSampler(Sampler):
                 random.shuffle(indices)
             # Create batches
             group_batches = [indices[i:i + self.batch_size] for i in range(0, len(indices), self.batch_size)]
+            if self.drop_last and len(group_batches[-1]) < self.batch_size:
+                group_batches = group_batches[:-1]
             self.batches.extend(group_batches)
 
         if self.shuffle:
@@ -110,7 +113,7 @@ set_seed(42)
 
 # ---------------------- Model and Tokenizer Setup ----------------------
 # Load GPT-2 tokenizer and model
-tokenizer = AutoTokenizer.from_pretrained('openai-community/gpt2-xl')
+tokenizer = AutoTokenizer.from_pretrained('openai-community/gpt2-xl', use_fast=True)
 model = AutoModelForCausalLM.from_pretrained('openai-community/gpt2-xl', attn_implementation="flash_attention_2")
 
 # Set padding token if not present
@@ -212,30 +215,55 @@ def tokenize_function(examples):
 
     return result
 
+# ---------------------- Caching Functions ----------------------
+def save_dataset(dataset, path):
+    torch.save(dataset, path)
+
+def load_cached_dataset(path):
+    return torch.load(path)
+
+# Define cache paths
+cache_dir = 'cache_datasets'
+os.makedirs(cache_dir, exist_ok=True)
+train_cache_path = os.path.join(cache_dir, 'train_dataset.pt')
+eval_cache_path = os.path.join(cache_dir, 'eval_dataset.pt')
+
 def prepare_dataset(dataset_split, split="train"):
     total_cores = multiprocessing.cpu_count()
     num_cpu_cores = min(64, total_cores)
     if is_main_process:
         print(f"Using {num_cpu_cores} CPU cores for '{split}' dataset processing.")
 
-    lm_dataset = dataset_split.map(
-        tokenize_function,
-        batched=True,
-        remove_columns=['original_text', 'cluster_id', 'dataset_name'],
-        desc=f"Tokenizing {split} dataset",
-        num_proc=num_cpu_cores,
-    )
+    cache_path = train_cache_path if split == "train" else eval_cache_path
 
-    lm_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels", "adapter_names"])
+    if os.path.exists(cache_path):
+        if is_main_process:
+            print(f"Loading cached {split} dataset from '{cache_path}'...")
+        lm_dataset = load_cached_dataset(cache_path)
+    else:
+        if is_main_process:
+            print(f"Processing and caching {split} dataset...")
+        lm_dataset = dataset_split.map(
+            tokenize_function,
+            batched=True,
+            remove_columns=['original_text', 'cluster_id', 'dataset_name'],
+            desc=f"Tokenizing {split} dataset",
+            num_proc=num_cpu_cores,
+        )
+        lm_dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels", "adapter_names"])
+        # Save the processed dataset only on the main process
+        if is_main_process:
+            save_dataset(lm_dataset, cache_path)
+            print(f"Saved cached {split} dataset to '{cache_path}'.")
     return lm_dataset
 
 if is_main_process:
     print("Preprocessing training data...")
-train_dataset = prepare_dataset(dataset["train"], "train")
+train_dataset = prepare_dataset(dataset["train"].select(range(1000)), "train")
 
 if is_main_process:
     print("Preprocessing validation data...")
-eval_dataset = prepare_dataset(dataset["validation"], "validation")
+eval_dataset = prepare_dataset(dataset["validation"].select(range(1000)), "validation")
 
 # ---------------------- Data Collator ----------------------
 class DataCollatorWithAdapterNames(DataCollatorForLanguageModeling):
@@ -257,59 +285,83 @@ class DataCollatorWithAdapterNames(DataCollatorForLanguageModeling):
 data_collator = DataCollatorWithAdapterNames(tokenizer=tokenizer, mlm=False)
 
 # ---------------------- Grouping Indices by Adapter ----------------------
-def group_indices_by_adapter(dataset):
-    adapter_to_indices = {}
-
-    # Attempt to determine the total number of examples for the progress bar
-    try:
-        total = len(dataset)
-    except TypeError:
-        total = None  # Dataset does not support len()
-
-    # Initialize tqdm progress bar
-    if is_main_process:
-        progress_bar = tqdm(enumerate(dataset), total=total, desc='Grouping Adapters', unit='example')
+def group_indices_by_adapter(dataset, cache_path):
+    # Check if grouped indices are cached
+    grouped_cache_path = cache_path.replace('.pt', '_grouped.pt')
+    if os.path.exists(grouped_cache_path):
+        if is_main_process:
+            print(f"Loading cached grouped indices from '{grouped_cache_path}'...")
+        adapter_to_indices = load_cached_dataset(grouped_cache_path)
     else:
-        progress_bar = enumerate(dataset)
+        adapter_to_indices = {}
 
-    for idx, example in progress_bar:
-        # Serialize adapter names to create a unique key
-        adapter_key = json.dumps(example['adapter_names'], sort_keys=True)
+        # Attempt to determine the total number of examples for the progress bar
+        try:
+            total = len(dataset)
+        except TypeError:
+            total = None  # Dataset does not support len()
 
-        # Initialize the list for this adapter_key if it doesn't exist
-        if adapter_key not in adapter_to_indices:
-            adapter_to_indices[adapter_key] = []
+        # Initialize tqdm progress bar
+        if is_main_process:
+            progress_bar = tqdm(enumerate(dataset), total=total, desc='Grouping Adapters', unit='example')
+        else:
+            progress_bar = enumerate(dataset)
 
-        # Append the current index to the list
-        adapter_to_indices[adapter_key].append(idx)
+        for idx, example in progress_bar:
+            # Serialize adapter names to create a unique key
+            adapter_key = json.dumps(example['adapter_names'], sort_keys=True)
+
+            # Initialize the list for this adapter_key if it doesn't exist
+            if adapter_key not in adapter_to_indices:
+                adapter_to_indices[adapter_key] = []
+
+            # Append the current index to the list
+            adapter_to_indices[adapter_key].append(idx)
+
+        # Save the grouped indices only on the main process
+        if is_main_process:
+            save_dataset(adapter_to_indices, grouped_cache_path)
+            print(f"Saved cached grouped indices to '{grouped_cache_path}'.")
 
     return adapter_to_indices
 
 # ---------------------- DataLoader Creation ----------------------
-def create_combined_dataloader(dataset, batch_size, shuffle=True):
-    adapter_to_indices = group_indices_by_adapter(dataset)
+def create_combined_dataloader(dataset, batch_size,split=None, shuffle=True, drop_last=True):
+    # Determine cache path based on dataset split
+    cache_path = train_cache_path if split == "train" else eval_cache_path
+
+    adapter_to_indices = group_indices_by_adapter(dataset, cache_path)
     batch_sampler = DistributedAdapterBatchSampler(
         adapter_to_indices,
         batch_size,
         num_replicas=torch.distributed.get_world_size(),
         rank=torch.distributed.get_rank(),
-        shuffle=shuffle
+        shuffle=shuffle,
+        drop_last=drop_last  # Pass the drop_last parameter
     )
+    
+    total_cpu_cores = multiprocessing.cpu_count() // 2
+    num_replicas = torch.distributed.get_world_size()
+    num_workers = total_cpu_cores // num_replicas
+    num_workers = max(1, num_workers)
+    
     dataloader = DataLoader(
         dataset,
         batch_sampler=batch_sampler,
         collate_fn=data_collator,
         pin_memory=True,
-        num_workers=4  # Adjust based on your system
+        num_workers=num_workers,  # Adjusted based on system
+        prefetch_factor=4,
+        persistent_workers=True
     )
     return dataloader
 
-batch_size = 1  # Match the Trainer's per_device_train_batch_size
+batch_size = 8  # Match the Trainer's per_device_train_batch_size
 accumulation_steps = 1  # Match the Trainer's gradient_accumulation_steps
 num_epochs = 1  # Match the Trainer's num_train_epochs
 
-train_dataloader = create_combined_dataloader(train_dataset, batch_size=batch_size, shuffle=True)
-eval_dataloader = create_combined_dataloader(eval_dataset, batch_size=batch_size, shuffle=False)
+train_dataloader = create_combined_dataloader(train_dataset, batch_size=batch_size, split="train", shuffle=True, drop_last=True)
+eval_dataloader = create_combined_dataloader(eval_dataset, batch_size=batch_size, split="eval",shuffle=False, drop_last=True)
 
 # ---------------------- Optimizer and Scheduler ----------------------
 learning_rate = 2e-5
@@ -317,10 +369,10 @@ learning_rate = 2e-5
 # Prepare the model for distributed training
 device = torch.device(f'cuda:{local_rank}')
 model.to(device)
-model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=False)
+model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
 # Optimizer
-optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01, eps=1e-8)
 scaler = GradScaler()
 
 # Calculate total optimizer steps
@@ -353,10 +405,15 @@ def distributed_training(model, train_dataloader, optimizer, scheduler, scaler, 
         train_dataloader.batch_sampler.set_epoch(epoch)  # Reshuffle for the new epoch
 
         for step, batch in enumerate(train_dataloader):
-            input_ids = batch['input_ids'].to(device, non_blocking=True)
-            attention_mask = batch['attention_mask'].to(device, non_blocking=True)
-            labels = batch['labels'].to(device, non_blocking=True)
-            adapter_names_list = batch['adapter_names']
+            try:
+                input_ids = batch['input_ids'].to(device, non_blocking=True)
+                attention_mask = batch['attention_mask'].to(device, non_blocking=True)
+                labels = batch['labels'].to(device, non_blocking=True)  # Keep labels in long format
+                adapter_names_list = batch['adapter_names']
+            except Exception as e:
+                if is_main_process:
+                    print(f"Error loading batch at step {step}: {e}")
+                continue
 
             batch_adapter_names = adapter_names_list[0]
             # Ensure all samples have the same adapter_names
@@ -403,7 +460,6 @@ def distributed_training(model, train_dataloader, optimizer, scheduler, scaler, 
 
     if is_main_process:
         pbar.close()
-
 # ---------------------- Evaluation Function ----------------------
 def distributed_evaluation(model, eval_dataloader, device, is_main_process):
     """
