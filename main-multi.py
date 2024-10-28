@@ -4,7 +4,6 @@ import random
 import json
 import math
 import sys
-import multiprocessing
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Sampler
@@ -14,20 +13,24 @@ from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
     DataCollatorForLanguageModeling,
-    get_cosine_schedule_with_warmup
+    get_cosine_schedule_with_warmup,
+    BitsAndBytesConfig
 )
 from datasets import load_dataset
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from peft.tuners.lora import LoraLayer
 from generate_config import get_adapter_mapping  # Ensure this module is available
 from tqdm import tqdm
 import traceback
+import multiprocessing
 
 # Import bitsandbytes for 8-bit optimizers
 import bitsandbytes as bnb
+from bitsandbytes.optim import AdamW8bit
 
 # ---------------------- Custom Batch Sampler ----------------------
 class DistributedAdapterBatchSampler(Sampler):
+    # [Your existing DistributedAdapterBatchSampler code here]
     def __init__(self, adapter_to_indices, batch_size, num_replicas=None, rank=None, shuffle=True, drop_last=False):
         if num_replicas is None:
             num_replicas = torch.distributed.get_world_size()
@@ -37,9 +40,9 @@ class DistributedAdapterBatchSampler(Sampler):
         self.rank = rank
         self.batch_size = batch_size
         self.shuffle = shuffle
-        self.drop_last = drop_last  # Added drop_last parameter
+        self.drop_last = drop_last
         self.adapter_to_indices = adapter_to_indices  # Save for reshuffling
-        self.seed = 42  # You can set this to any integer
+        self.seed = 42
         self.epoch = 0
         self.create_batches()
 
@@ -51,12 +54,31 @@ class DistributedAdapterBatchSampler(Sampler):
                 random.shuffle(indices)
             # Create batches
             group_batches = [indices[i:i + self.batch_size] for i in range(0, len(indices), self.batch_size)]
+            # Handle incomplete batches
             if self.drop_last and len(group_batches[-1]) < self.batch_size:
                 group_batches = group_batches[:-1]
             self.batches.extend(group_batches)
 
         if self.shuffle:
             random.shuffle(self.batches)
+
+        # Ensure total number of batches is divisible by num_replicas
+        total_batches = len(self.batches)
+        remainder = total_batches % self.num_replicas
+        if remainder != 0:
+            # Calculate number of batches to drop
+            batches_to_drop = remainder
+            # Drop batches from the end
+            if self.drop_last:
+                if self.rank == 0:
+                    print(f"Dropping {batches_to_drop} batches to make total divisible by {self.num_replicas}")
+                self.batches = self.batches[:-batches_to_drop]
+            else:
+                # If not dropping, pad with existing batches to make it divisible
+                extra_batches = self.batches[:self.num_replicas - remainder]
+                if self.rank == 0:
+                    print(f"Adding {len(extra_batches)} batches to make total divisible by {self.num_replicas}")
+                self.batches.extend(extra_batches)
 
         # Partition batches among processes
         self.total_size = len(self.batches)
@@ -78,6 +100,7 @@ class DistributedAdapterBatchSampler(Sampler):
 # ---------------------- Argument Parsing and Setup ----------------------
 def parse_args():
     parser = argparse.ArgumentParser()
+    # Add any required arguments here
     args = parser.parse_args()
     return args
 
@@ -90,40 +113,58 @@ def setup_distributed():
     if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
         rank = int(os.environ['RANK'])
         world_size = int(os.environ['WORLD_SIZE'])
-        torch.distributed.init_process_group(backend='nccl', init_method='env://')
+        torch.distributed.init_process_group(
+            backend='nccl', init_method='env://')
     else:
         rank = 0
         world_size = 1
-        torch.distributed.init_process_group(backend='nccl', init_method='env://', rank=rank, world_size=world_size)
-    torch.cuda.set_device(local_rank)
-    return rank
+        torch.distributed.init_process_group(
+            backend='nccl', init_method='env://', rank=rank, world_size=world_size)
+    device = torch.device(f'cuda:{local_rank}')
+    torch.cuda.set_device(device)
+    return rank, device
 
-rank = setup_distributed()
+rank, device = setup_distributed()
 is_main_process = rank == 0
 
 # Set random seed for reproducibility
 def set_seed(seed):
-    torch.manual_seed(seed)
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # if using multi-GPU.
+    torch.manual_seed(seed + rank)
+    random.seed(seed + rank)
+    np.random.seed(seed + rank)
+    torch.cuda.manual_seed(seed + rank)
+    torch.cuda.manual_seed_all(seed + rank)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
 set_seed(42)
 
 # ---------------------- Model and Tokenizer Setup ----------------------
-# Load GPT-2 tokenizer and model using bitsandbytes quantization
-tokenizer = AutoTokenizer.from_pretrained('openai-community/gpt2-xl', use_fast=True)
+# Configure quantization (if needed)
+# Uncomment the following if you want to use bitsandbytes quantization
+"""
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_use_double_quant=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.float16
+)
+"""
 
-# Use AutoModelForCausalLM with 8-bit quantization via bitsandbytes
+# Load GPT-2 tokenizer and model
+tokenizer = AutoTokenizer.from_pretrained('openai-community/gpt2-xl')
 model = AutoModelForCausalLM.from_pretrained(
     'openai-community/gpt2-xl',
-    load_in_8bit=True,
-    device_map={"": local_rank},
-    quantization_config=bnb.nn.quantization.Config(),
+    # quantization_config=bnb_config,  # Uncomment if using quantization
+    device_map={"": device},  # Map the entire model to the local device
+    attn_implementation="flash_attention_2"
 )
+
+# Prepare model for k-bit training if using bitsandbytes quantization
+# Uncomment the following if you want to use bitsandbytes quantization
+"""
+model = prepare_model_for_kbit_training(model)
+"""
 
 # Set padding token if not present
 if tokenizer.pad_token is None:
@@ -149,29 +190,31 @@ def create_lora_config(adapter_cfg):
         task_type='CAUSAL_LM'
     )
 
-# Initialize the PEFT model with the first adapter
-first_adapter = adapter_configs[0]
-peft_config = create_lora_config(first_adapter)
-model = get_peft_model(model, peft_config, adapter_name=first_adapter['adapter_name'])
+# Initialize the PEFT model and add adapters
+peft_config = create_lora_config(adapter_configs[0])
+model = get_peft_model(model, peft_config, adapter_name=adapter_configs[0]['adapter_name'])
 
-# Add the remaining adapters
 for adapter_cfg in adapter_configs[1:]:
     peft_config = create_lora_config(adapter_cfg)
     model.add_adapter(adapter_cfg['adapter_name'], peft_config)
 
-# Precompute LoRA layers mapping
-def get_lora_layers(model):
-    lora_layers = {}
-    for name, module in model.named_modules():
-        if isinstance(module, LoraLayer):
-            name_parts = name.split('.')
-            if 'h' in name_parts:
-                h_idx = name_parts.index('h')
-                layer_idx = name_parts[h_idx + 1]
-                lora_layers[layer_idx] = module
-    return lora_layers
+if is_main_process:
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"Total Parameters: {total_params}")
+    print(f"Trainable Parameters: {trainable_params}")
 
-lora_layers = get_lora_layers(model)
+# Set requires_grad=True for all adapter parameters and requires_grad=False for others
+for name, param in model.named_parameters():
+    if 'lora_' in name:
+        param.requires_grad = True
+
+# Print number of trainable parameters
+if is_main_process:
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"Total Parameters: {total_params}")
+    print(f"Trainable Parameters: {trainable_params}")
 
 # ---------------------- Dataset Preparation ----------------------
 # Create a mapping from dataset_name to court code
@@ -297,6 +340,8 @@ data_collator = DataCollatorWithAdapterNames(tokenizer=tokenizer, mlm=False)
 
 # ---------------------- Grouping Indices by Adapter ----------------------
 def group_indices_by_adapter(dataset, cache_path):
+    # [Your existing group_indices_by_adapter code here]
+
     # Check if grouped indices are cached
     grouped_cache_path = cache_path.replace('.pt', '_grouped.pt')
     if os.path.exists(grouped_cache_path):
@@ -348,7 +393,7 @@ def create_combined_dataloader(dataset, batch_size, split=None, shuffle=True, dr
         num_replicas=torch.distributed.get_world_size(),
         rank=torch.distributed.get_rank(),
         shuffle=shuffle,
-        drop_last=drop_last  # Pass the drop_last parameter
+        drop_last=drop_last
     )
 
     total_cpu_cores = multiprocessing.cpu_count()
@@ -365,9 +410,9 @@ def create_combined_dataloader(dataset, batch_size, split=None, shuffle=True, dr
     )
     return dataloader
 
-batch_size = 1  # Match the Trainer's per_device_train_batch_size
-accumulation_steps = 1  # Match the Trainer's gradient_accumulation_steps
-num_epochs = 1  # Match the Trainer's num_train_epochs
+batch_size = 1  # Adjust as needed
+accumulation_steps = 1
+num_epochs = 1
 
 train_dataloader = create_combined_dataloader(train_dataset, batch_size=batch_size, split="train", shuffle=True, drop_last=True)
 eval_dataloader = create_combined_dataloader(eval_dataset, batch_size=batch_size, split="eval", shuffle=False, drop_last=True)
@@ -375,27 +420,30 @@ eval_dataloader = create_combined_dataloader(eval_dataset, batch_size=batch_size
 # ---------------------- Optimizer and Scheduler ----------------------
 learning_rate = 2e-5
 
-# Prepare the model for distributed training
-device = torch.device(f'cuda:{local_rank}')
-model.to(device)
-
-# Use bitsandbytes optimizer for 8-bit Adam
-optimizer = bnb.optim.Adam8bit(
-    model.parameters(),
-    lr=learning_rate,
-    weight_decay=0.01,
-    betas=(0.9, 0.999),
-    eps=1e-8
-)
+# Use bitsandbytes optimizer for 8-bit AdamW
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
 
 # Wrap the model with DDP
 model = DDP(
     model,
     device_ids=[local_rank],
     output_device=local_rank,
-    find_unused_parameters=True  # Set to True if you have unused parameters
+    find_unused_parameters=True
 )
 
+# Update lora_layers after wrapping model in DDP
+def get_lora_layers_ddp(model):
+    lora_layers = {}
+    for name, module in model.named_modules():
+        if isinstance(module, LoraLayer):
+            name_parts = name.split('.')
+            if 'h' in name_parts:
+                h_idx = name_parts.index('h')
+                layer_idx = name_parts[h_idx + 1]
+                lora_layers[layer_idx] = module
+    return lora_layers
+
+lora_layers = get_lora_layers_ddp(model.module)
 scaler = GradScaler()
 
 # Calculate total optimizer steps
@@ -486,7 +534,7 @@ def distributed_training(model, train_dataloader, optimizer, scheduler, scaler, 
 
         average_epoch_loss = epoch_loss / len(train_dataloader)
         if is_main_process:
-            print(f"Epoch {epoch +1}, Average Loss: {average_epoch_loss:.4f}")
+            print(f"Epoch {epoch + 1}, Average Loss: {average_epoch_loss:.4f}")
 
     if is_main_process:
         pbar.close()
@@ -581,11 +629,8 @@ def distributed_evaluation(model, eval_dataloader, device, is_main_process):
 
 # ---------------------- Main Execution ----------------------
 def main():
-    """
-    Main function to handle training and evaluation.
-    """
     try:
-        # ---------------------- Training ----------------------
+        # Training and Evaluation
         distributed_training(
             model=model,
             train_dataloader=train_dataloader,
@@ -598,7 +643,6 @@ def main():
             accumulation_steps=accumulation_steps
         )
 
-        # ---------------------- Evaluation ----------------------
         average_eval_loss = distributed_evaluation(
             model=model,
             eval_dataloader=eval_dataloader,
@@ -607,18 +651,15 @@ def main():
         )
 
     except Exception as e:
-        # Log the exception in all ranks
+        # Exception handling
         rank = torch.distributed.get_rank()
         print(f"Rank {rank} encountered an exception: {e}")
         traceback.print_exc()
-        # Ensure all processes are aware of the exception
         torch.distributed.barrier()
-        # Clean up
         torch.distributed.destroy_process_group()
         sys.exit(1)
 
     finally:
-        # Ensure the process group is destroyed
         if torch.distributed.is_initialized():
             torch.distributed.destroy_process_group()
 
