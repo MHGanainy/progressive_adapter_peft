@@ -259,11 +259,11 @@ def prepare_dataset(dataset_split, split="train"):
 
 if is_main_process:
     print("Preprocessing training data...")
-train_dataset = prepare_dataset(dataset["train"].select(range(1000)), "train")
+train_dataset = prepare_dataset(dataset["train"].select(range(10000)), "train")
 
 if is_main_process:
     print("Preprocessing validation data...")
-eval_dataset = prepare_dataset(dataset["validation"].select(range(1000)), "validation")
+eval_dataset = prepare_dataset(dataset["validation"].select(range(10000)), "validation")
 
 # ---------------------- Data Collator ----------------------
 class DataCollatorWithAdapterNames(DataCollatorForLanguageModeling):
@@ -356,7 +356,7 @@ def create_combined_dataloader(dataset, batch_size,split=None, shuffle=True, dro
     )
     return dataloader
 
-batch_size = 8  # Match the Trainer's per_device_train_batch_size
+batch_size = 1  # Match the Trainer's per_device_train_batch_size
 accumulation_steps = 1  # Match the Trainer's gradient_accumulation_steps
 num_epochs = 1  # Match the Trainer's num_train_epochs
 
