@@ -8,7 +8,6 @@ import multiprocessing
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Sampler
-from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.cuda.amp import autocast, GradScaler
 from transformers import (
@@ -20,13 +19,14 @@ from transformers import (
 from datasets import load_dataset
 from peft import LoraConfig, get_peft_model
 from peft.tuners.lora import LoraLayer
-from generate_config import get_adapter_mapping  # Make sure this module is available
+from generate_config import get_adapter_mapping  # Ensure this module is available
 from tqdm import tqdm
 import traceback
 
-# ---------------------- Custom Batch Sampler ----------------------
-from torch.utils.data import Sampler
+# Import bitsandbytes for 8-bit optimizers
+import bitsandbytes as bnb
 
+# ---------------------- Custom Batch Sampler ----------------------
 class DistributedAdapterBatchSampler(Sampler):
     def __init__(self, adapter_to_indices, batch_size, num_replicas=None, rank=None, shuffle=True, drop_last=False):
         if num_replicas is None:
@@ -114,9 +114,16 @@ def set_seed(seed):
 set_seed(42)
 
 # ---------------------- Model and Tokenizer Setup ----------------------
-# Load GPT-2 tokenizer and model
+# Load GPT-2 tokenizer and model using bitsandbytes quantization
 tokenizer = AutoTokenizer.from_pretrained('openai-community/gpt2-xl', use_fast=True)
-model = AutoModelForCausalLM.from_pretrained('openai-community/gpt2-xl', attn_implementation="flash_attention_2")
+
+# Use AutoModelForCausalLM with 8-bit quantization via bitsandbytes
+model = AutoModelForCausalLM.from_pretrained(
+    'openai-community/gpt2-xl',
+    load_in_8bit=True,
+    device_map={"": local_rank},
+    quantization_config=bnb.nn.quantization.Config(),
+)
 
 # Set padding token if not present
 if tokenizer.pad_token is None:
@@ -371,6 +378,17 @@ learning_rate = 2e-5
 # Prepare the model for distributed training
 device = torch.device(f'cuda:{local_rank}')
 model.to(device)
+
+# Use bitsandbytes optimizer for 8-bit Adam
+optimizer = bnb.optim.Adam8bit(
+    model.parameters(),
+    lr=learning_rate,
+    weight_decay=0.01,
+    betas=(0.9, 0.999),
+    eps=1e-8
+)
+
+# Wrap the model with DDP
 model = DDP(
     model,
     device_ids=[local_rank],
@@ -378,8 +396,6 @@ model = DDP(
     find_unused_parameters=True  # Set to True if you have unused parameters
 )
 
-# Optimizer
-optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01, eps=1e-8)
 scaler = GradScaler()
 
 # Calculate total optimizer steps
