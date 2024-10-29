@@ -16,7 +16,7 @@ from transformers import (
     get_cosine_schedule_with_warmup,
     BitsAndBytesConfig
 )
-from datasets import load_dataset
+from datasets import load_dataset, concatenate_datasets
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from peft.tuners.lora import LoraLayer
 from generate_config import get_adapter_mapping  # Ensure this module is available
@@ -204,17 +204,11 @@ if is_main_process:
     print(f"Total Parameters: {total_params}")
     print(f"Trainable Parameters: {trainable_params}")
 
-# Set requires_grad=True for all adapter parameters and requires_grad=False for others
-for name, param in model.named_parameters():
-    if 'lora_' in name:
-        param.requires_grad = True
-
-# Print number of trainable parameters
-if is_main_process:
-    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    total_params = sum(p.numel() for p in model.parameters())
-    print(f"Total Parameters: {total_params}")
-    print(f"Trainable Parameters: {trainable_params}")
+# Remove the code that sets requires_grad=True for all adapter parameters
+# Allow the model to manage requires_grad based on active adapters
+# for name, param in model.named_parameters():
+#     if 'lora_' in name:
+#         param.requires_grad = True
 
 # ---------------------- Dataset Preparation ----------------------
 # Create a mapping from dataset_name to court code
@@ -443,7 +437,15 @@ def get_lora_layers_ddp(model):
                 lora_layers[layer_idx] = module
     return lora_layers
 
-lora_layers = get_lora_layers_ddp(model.module)
+def get_all_lora_layers(model):
+    lora_layers = []
+    for name, module in model.named_modules():
+        if isinstance(module, LoraLayer):
+            lora_layers.append((name, module))
+    return lora_layers
+
+
+# lora_layers = get_lora_layers_ddp(model.module)
 scaler = GradScaler()
 
 # Calculate total optimizer steps
@@ -459,11 +461,20 @@ scheduler = get_cosine_schedule_with_warmup(
     num_training_steps=total_optimizer_steps
 )
 
+def get_relevant_param_names(model, active_adapter_names):
+    relevant_param_names = []
+    for name, param in model.named_parameters():
+        if 'lora_' in name:
+            # Extract adapter name from parameter name
+            name_parts = name.split('.')
+            adapter_name = name_parts[-2]  # Assuming adapter name is before 'weight' or 'bias'
+            if adapter_name in active_adapter_names:
+                relevant_param_names.append(name)
+    return relevant_param_names
+
+
 # ---------------------- Training Function ----------------------
 def distributed_training(model, train_dataloader, optimizer, scheduler, scaler, device, is_main_process, num_epochs, accumulation_steps):
-    """
-    Handles the distributed training loop.
-    """
     optimizer_step_count = 0
 
     if is_main_process:
@@ -487,12 +498,46 @@ def distributed_training(model, train_dataloader, optimizer, scheduler, scaler, 
                 if not all(adapter == batch_adapter_names for adapter in adapter_names_list):
                     raise ValueError("All samples in the batch must have the same adapter configurations.")
 
-                # Set adapters using precomputed mapping
-                for layer_idx, module in lora_layers.items():
+                # Get all LoraLayer instances
+                lora_layers = get_all_lora_layers(model)
+
+                # Set adapters using precomputed mapping and collect active adapters
+                active_adapters_info = []
+                for module_name, module in lora_layers:
+                    # Extract layer index from module_name
+                    name_parts = module_name.split('.')
+                    if 'h' in name_parts:
+                        h_idx = name_parts.index('h')
+                        layer_idx = str(name_parts[h_idx + 1])
+                    else:
+                        module.enable_adapters(False)
+                        continue
+
+                    # Get the active adapter name for this layer
                     adapter_name = batch_adapter_names.get(layer_idx, None)
                     if adapter_name:
                         module.set_adapter(adapter_name)
+                        module.enable_adapters(True)
+                    else:
+                        module.enable_adapters(False)
 
+                    # Collect active adapter info
+                    active_adapters_info.append(f"Layer {layer_idx}: {module.active_adapter}")
+                
+                active_adapter_names = set(batch_adapter_names.values())
+                # Get the names of parameters that should have gradients
+                relevant_param_names = get_relevant_param_names(model, active_adapter_names)
+                for name, param in model.named_parameters():
+                    if name in relevant_param_names:
+                        # Parameters that should have requires_grad=True
+                        assert param.requires_grad, (
+                            f"Parameter {name} should have requires_grad=True, but has requires_grad={param.requires_grad}."
+                        )
+                    else:
+                        # Parameters that should have requires_grad=False
+                        assert not param.requires_grad, (
+                            f"Parameter {name} should have requires_grad=False, but has requires_grad={param.requires_grad}."
+                        )
                 with autocast():
                     outputs = model(
                         input_ids=input_ids,
@@ -509,6 +554,29 @@ def distributed_training(model, train_dataloader, optimizer, scheduler, scaler, 
 
                 if (step + 1) % accumulation_steps == 0 or (step + 1) == len(train_dataloader):
                     scaler.unscale_(optimizer)
+                    
+                    active_adapter_names = set(batch_adapter_names.values())
+                    # Get the names of parameters that should have gradients
+                    relevant_param_names = get_relevant_param_names(model, active_adapter_names)
+
+                    # Verify gradients
+                    error_messages = []
+
+                    for name, param in model.named_parameters():
+                        if name in relevant_param_names:
+                            # Parameters that should have non-zero gradients
+                            if param.grad is None or param.grad.abs().sum().item() == 0:
+                                error_messages.append(f"Parameter {name} should have non-zero gradient, but has zero gradient.")
+                        else:
+                            # Parameters that should not have gradients
+                            if param.grad is not None and param.grad.abs().sum().item() != 0:
+                                error_messages.append(f"Parameter {name} should not have gradient, but has non-zero gradient.")
+
+                    if error_messages:
+                        print("Gradient check failed:")
+                        for msg in error_messages:
+                            print(msg)
+                    # Proceed with optimizer step
                     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                     scaler.step(optimizer)
                     scaler.update()
@@ -520,7 +588,6 @@ def distributed_training(model, train_dataloader, optimizer, scheduler, scaler, 
                         current_lr = scheduler.get_last_lr()[0]
                         pbar.update(1)
                         pbar.set_postfix({'loss': f"{loss_value:.4f}", 'lr': f"{current_lr:.6f}"})
-
             except Exception as e:
                 # Log the exception in all ranks
                 rank = torch.distributed.get_rank()
@@ -545,6 +612,11 @@ def distributed_evaluation(model, eval_dataloader, device, is_main_process):
     Handles the distributed evaluation loop.
     """
     model.eval()
+
+    # Set requires_grad=False for all parameters
+    for param in model.parameters():
+        param.requires_grad = False
+
     eval_loss = 0.0
     eval_steps = 0
 
@@ -567,11 +639,46 @@ def distributed_evaluation(model, eval_dataloader, device, is_main_process):
                 if not all(adapter == batch_adapter_names for adapter in adapter_names_list):
                     raise ValueError("All samples in the batch must have the same adapter configurations.")
 
-                # Set adapters using precomputed mapping
-                for layer_idx, module in lora_layers.items():
+                # Get all LoraLayer instances
+                lora_layers = get_all_lora_layers(model)
+
+                # Set adapters using precomputed mapping and collect active adapters
+                active_adapters_info = []
+                for module_name, module in lora_layers:
+                    # Extract layer index from module_name
+                    name_parts = module_name.split('.')
+                    if 'h' in name_parts:
+                        h_idx = name_parts.index('h')
+                        layer_idx = str(name_parts[h_idx + 1])
+                    else:
+                        module.enable_adapters(False)
+                        continue
+
+                    # Get the active adapter name for this layer
                     adapter_name = batch_adapter_names.get(layer_idx, None)
                     if adapter_name:
                         module.set_adapter(adapter_name)
+                        module.enable_adapters(False)
+
+                    # Collect active adapter info
+                    active_adapters_info.append(f"Layer {layer_idx}: {module.active_adapter}")
+
+                # Optional: Print active adapters per layer
+                # print("Active adapters per layer:")
+                # print(", ".join(active_adapters_info))
+
+                # Verify that all parameters have requires_grad=False
+                requires_grad_errors = []
+                for name, param in model.named_parameters():
+                    if param.requires_grad:
+                        requires_grad_errors.append(
+                            f"Parameter {name} should have requires_grad=False during evaluation, but has requires_grad=True."
+                        )
+
+                if requires_grad_errors:
+                    print("requires_grad check failed during evaluation:")
+                    for msg in requires_grad_errors:
+                        print(msg)
 
                 with autocast():
                     outputs = model(
@@ -665,4 +772,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

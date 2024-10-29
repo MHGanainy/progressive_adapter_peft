@@ -558,7 +558,7 @@ class Linear(nn.Module, LoraLayer):
 
         return output_tensor
 
-    def forward(self, x: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, *args, **kwargs) -> torch.Tensor:
         self._check_forward_args(x, *args, **kwargs)
         adapter_names = kwargs.pop("adapter_names", None)
 
@@ -573,36 +573,31 @@ class Linear(nn.Module, LoraLayer):
         else:
             result = self.base_layer(x, *args, **kwargs)
             torch_result_dtype = result.dtype
-            for active_adapter in self.active_adapters:
-                if active_adapter not in self.lora_A.keys():
-                    continue
-                lora_A = self.lora_A[active_adapter]
-                lora_B = self.lora_B[active_adapter]
-                dropout = self.lora_dropout[active_adapter]
-                scaling = self.scaling[active_adapter]
-                x = x.to(lora_A.weight.dtype)
 
-                if not self.use_dora[active_adapter]:
+            active_adapters = self.active_adapters
+            if len(active_adapters) == 1:
+                active_adapter = active_adapters[0]
+                if active_adapter in self.lora_A:
+                    # print(f"Using active adapter: {active_adapter} in module {self.__class__.__name__}")
+                    lora_A = self.lora_A[active_adapter]
+                    lora_B = self.lora_B[active_adapter]
+                    dropout = self.lora_dropout[active_adapter]
+                    scaling = self.scaling[active_adapter]
+                    x = x.to(lora_A.weight.dtype)
+
+                    # Apply the adapter
                     result = result + lora_B(lora_A(dropout(x))) * scaling
-                else:
-                    if isinstance(dropout, nn.Identity) or not self.training:
-                        base_result = result
-                    else:
-                        x = dropout(x)
-                        base_result = None
-
-                    result = result + self.lora_magnitude_vector[active_adapter](
-                        x,
-                        lora_A=lora_A,
-                        lora_B=lora_B,
-                        scaling=scaling,
-                        base_layer=self.get_base_layer(),
-                        base_result=base_result,
-                    )
+            elif len(active_adapters) == 0:
+                # No active adapter; do nothing extra
+                pass
+            else:
+                raise ValueError(f"Expected only one active adapter per layer, but got: {active_adapters}")
 
             result = result.to(torch_result_dtype)
 
         return result
+
+
 
     def __repr__(self) -> str:
         rep = super().__repr__()
