@@ -204,7 +204,6 @@ training_args = TrainingArguments(
     save_strategy="no",
     report_to="none",
     seed=seed,  # Set seed for TrainingArguments
-    data_seed=seed,  # Ensure data shuffling is reproducible
 )
 
 print(f"Steps per epoch: {steps_per_epoch}")
