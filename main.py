@@ -198,11 +198,9 @@ trainer = Trainer(
 
 # 8. Start training
 train_result =  trainer.train()
-trainer.save_model()
 metrics = train_result.metrics
 trainer.log_metrics("train", metrics)
 trainer.save_metrics("train", metrics)
-trainer.save_state()
 
 metrics = trainer.evaluate()
 perplexity = math.exp(metrics["eval_loss"])
