@@ -1,2 +1,4 @@
 .vscode/
 gpt2-xl-peft-lora/
+peft/__pycache__/
+*.pyc
