@@ -104,7 +104,7 @@ def prepare_dataset(dataset_split, split="train"):
         desc=f"Tokenizing {split} dataset",
         num_proc=num_cpu_cores,
         # Ensure deterministic shuffling
-        load_from_cache_file=False,
+        load_from_cache_file=True,
         writer_batch_size=1000,
     )
 
@@ -181,7 +181,7 @@ for name, param in model.named_parameters():
 model.print_trainable_parameters()  # Optional: Print trainable parameters
 
 # 5. Define training arguments
-batch_size: int = 8
+batch_size: int = 4
 num_train_epochs = 1
 steps_per_epoch = len(train_dataset) // batch_size
 total_steps = int(steps_per_epoch * num_train_epochs)
@@ -200,7 +200,7 @@ training_args = TrainingArguments(
     optim="adamw_torch",
     lr_scheduler_type="cosine",
     warmup_ratio=0.1,
-    ddp_find_unused_parameters=False,
+    ddp_find_unused_parameters=True,
     save_strategy="no",
     report_to="none",
     seed=seed,  # Set seed for TrainingArguments
