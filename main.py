@@ -112,10 +112,10 @@ def prepare_dataset(dataset_split, split="train"):
     return lm_dataset
 
 print("Preprocessing training data...")
-train_dataset = prepare_dataset(dataset["train"], "train")
+train_dataset = prepare_dataset(dataset["train"].select(range(0,10)), "train")
 
 print("Preprocessing validation data...")
-eval_dataset = prepare_dataset(dataset["validation"], "validation")
+eval_dataset = prepare_dataset(dataset["validation"].select(range(0,10)), "validation")
 
 # 4. Apply PEFT with LoRA configurations
 # Define LoRA configurations
@@ -129,6 +129,8 @@ peft_config_layers_0_11 = LoraConfig(
     layers_pattern="h",
     num_adapters_per_layer=1,
     layer_group=0,
+    adapter_labels=["AC"],
+    r_a=[64]
 )
 
 peft_config_layers_12_23 = LoraConfig(
@@ -141,6 +143,8 @@ peft_config_layers_12_23 = LoraConfig(
     layers_pattern="h",
     num_adapters_per_layer=2,
     layer_group=1,
+    adapter_labels=['EU','CC'],
+    r_a=[21,43]
 )
 
 peft_config_layers_24_35 = LoraConfig(
@@ -153,6 +157,8 @@ peft_config_layers_24_35 = LoraConfig(
     layers_pattern="h",
     num_adapters_per_layer=4,
     layer_group=2,
+    adapter_labels=['ECHR','EU','IC','ACC'],
+    r_a=[7,14,9,34]
 )
 
 peft_config_layers_36_47 = LoraConfig(
@@ -165,6 +171,8 @@ peft_config_layers_36_47 = LoraConfig(
     layers_pattern="h",
     num_adapters_per_layer=5,
     layer_group=3,
+    adapter_labels=['ECHR','EU','IC','UKC','CAC'],
+    r_a=[7,14,9,31,3]
 )
 
 # Apply PEFT to the model
@@ -180,8 +188,17 @@ for name, param in model.named_parameters():
 
 model.print_trainable_parameters()  # Optional: Print trainable parameters
 
+# Write the model architecture to a text file
+with open('model_architecture.txt', 'w') as f:
+    f.write(str(model))
+
+with open('trainable_parameters.txt', 'w') as f:
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            f.write(f"Parameter Name: {name}\n")
+
 # 5. Define training arguments
-batch_size: int = 4
+batch_size: int = 1
 num_train_epochs = 1
 steps_per_epoch = len(train_dataset) // batch_size
 total_steps = int(steps_per_epoch * num_train_epochs)

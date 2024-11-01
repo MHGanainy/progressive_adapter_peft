@@ -8,7 +8,7 @@ PeftModelForCausalLM(
         (h): ModuleList(
           (0-11): 12 x GPT2Block(
             (ln_1): LayerNorm((1600,), eps=1e-05, elementwise_affine=True)
-            (attn): GPT2Attention(
+            (attn): GPT2FlashAttention2(
               (c_attn): lora.Linear(
                 (base_layer): Conv1D(nf=4800, nx=1600)
                 (lora_dropout): ModuleDict(
@@ -78,7 +78,7 @@ PeftModelForCausalLM(
           )
           (12-23): 12 x GPT2Block(
             (ln_1): LayerNorm((1600,), eps=1e-05, elementwise_affine=True)
-            (attn): GPT2Attention(
+            (attn): GPT2FlashAttention2(
               (c_attn): lora.Linear(
                 (base_layer): Conv1D(nf=4800, nx=1600)
                 (lora_dropout): ModuleDict(
@@ -86,14 +86,14 @@ PeftModelForCausalLM(
                 )
                 (lora_A): ModuleDict(
                   (layer_12_23): ModuleDict(
-                    (0): Linear(in_features=1600, out_features=32, bias=False)
-                    (1): Linear(in_features=1600, out_features=32, bias=False)
+                    (0): Linear(in_features=1600, out_features=21, bias=False)
+                    (1): Linear(in_features=1600, out_features=43, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
                   (layer_12_23): ModuleDict(
-                    (0): Linear(in_features=32, out_features=4800, bias=False)
-                    (1): Linear(in_features=32, out_features=4800, bias=False)
+                    (0): Linear(in_features=21, out_features=4800, bias=False)
+                    (1): Linear(in_features=43, out_features=4800, bias=False)
                   )
                 )
                 (lora_embedding_A): ParameterDict()
@@ -107,14 +107,14 @@ PeftModelForCausalLM(
                 )
                 (lora_A): ModuleDict(
                   (layer_12_23): ModuleDict(
-                    (0): Linear(in_features=1600, out_features=32, bias=False)
-                    (1): Linear(in_features=1600, out_features=32, bias=False)
+                    (0): Linear(in_features=1600, out_features=21, bias=False)
+                    (1): Linear(in_features=1600, out_features=43, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
                   (layer_12_23): ModuleDict(
-                    (0): Linear(in_features=32, out_features=1600, bias=False)
-                    (1): Linear(in_features=32, out_features=1600, bias=False)
+                    (0): Linear(in_features=21, out_features=1600, bias=False)
+                    (1): Linear(in_features=43, out_features=1600, bias=False)
                   )
                 )
                 (lora_embedding_A): ParameterDict()
@@ -134,14 +134,14 @@ PeftModelForCausalLM(
                 )
                 (lora_A): ModuleDict(
                   (layer_12_23): ModuleDict(
-                    (0): Linear(in_features=6400, out_features=32, bias=False)
-                    (1): Linear(in_features=6400, out_features=32, bias=False)
+                    (0): Linear(in_features=6400, out_features=21, bias=False)
+                    (1): Linear(in_features=6400, out_features=43, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
                   (layer_12_23): ModuleDict(
-                    (0): Linear(in_features=32, out_features=1600, bias=False)
-                    (1): Linear(in_features=32, out_features=1600, bias=False)
+                    (0): Linear(in_features=21, out_features=1600, bias=False)
+                    (1): Linear(in_features=43, out_features=1600, bias=False)
                   )
                 )
                 (lora_embedding_A): ParameterDict()
@@ -154,7 +154,7 @@ PeftModelForCausalLM(
           )
           (24-35): 12 x GPT2Block(
             (ln_1): LayerNorm((1600,), eps=1e-05, elementwise_affine=True)
-            (attn): GPT2Attention(
+            (attn): GPT2FlashAttention2(
               (c_attn): lora.Linear(
                 (base_layer): Conv1D(nf=4800, nx=1600)
                 (lora_dropout): ModuleDict(
@@ -162,18 +162,18 @@ PeftModelForCausalLM(
                 )
                 (lora_A): ModuleDict(
                   (layer_24_35): ModuleDict(
-                    (0): Linear(in_features=1600, out_features=16, bias=False)
-                    (1): Linear(in_features=1600, out_features=16, bias=False)
-                    (2): Linear(in_features=1600, out_features=16, bias=False)
-                    (3): Linear(in_features=1600, out_features=16, bias=False)
+                    (0): Linear(in_features=1600, out_features=7, bias=False)
+                    (1): Linear(in_features=1600, out_features=14, bias=False)
+                    (2): Linear(in_features=1600, out_features=9, bias=False)
+                    (3): Linear(in_features=1600, out_features=34, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
                   (layer_24_35): ModuleDict(
-                    (0): Linear(in_features=16, out_features=4800, bias=False)
-                    (1): Linear(in_features=16, out_features=4800, bias=False)
-                    (2): Linear(in_features=16, out_features=4800, bias=False)
-                    (3): Linear(in_features=16, out_features=4800, bias=False)
+                    (0): Linear(in_features=7, out_features=4800, bias=False)
+                    (1): Linear(in_features=14, out_features=4800, bias=False)
+                    (2): Linear(in_features=9, out_features=4800, bias=False)
+                    (3): Linear(in_features=34, out_features=4800, bias=False)
                   )
                 )
                 (lora_embedding_A): ParameterDict()
@@ -187,18 +187,18 @@ PeftModelForCausalLM(
                 )
                 (lora_A): ModuleDict(
                   (layer_24_35): ModuleDict(
-                    (0): Linear(in_features=1600, out_features=16, bias=False)
-                    (1): Linear(in_features=1600, out_features=16, bias=False)
-                    (2): Linear(in_features=1600, out_features=16, bias=False)
-                    (3): Linear(in_features=1600, out_features=16, bias=False)
+                    (0): Linear(in_features=1600, out_features=7, bias=False)
+                    (1): Linear(in_features=1600, out_features=14, bias=False)
+                    (2): Linear(in_features=1600, out_features=9, bias=False)
+                    (3): Linear(in_features=1600, out_features=34, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
                   (layer_24_35): ModuleDict(
-                    (0): Linear(in_features=16, out_features=1600, bias=False)
-                    (1): Linear(in_features=16, out_features=1600, bias=False)
-                    (2): Linear(in_features=16, out_features=1600, bias=False)
-                    (3): Linear(in_features=16, out_features=1600, bias=False)
+                    (0): Linear(in_features=7, out_features=1600, bias=False)
+                    (1): Linear(in_features=14, out_features=1600, bias=False)
+                    (2): Linear(in_features=9, out_features=1600, bias=False)
+                    (3): Linear(in_features=34, out_features=1600, bias=False)
                   )
                 )
                 (lora_embedding_A): ParameterDict()
@@ -218,18 +218,18 @@ PeftModelForCausalLM(
                 )
                 (lora_A): ModuleDict(
                   (layer_24_35): ModuleDict(
-                    (0): Linear(in_features=6400, out_features=16, bias=False)
-                    (1): Linear(in_features=6400, out_features=16, bias=False)
-                    (2): Linear(in_features=6400, out_features=16, bias=False)
-                    (3): Linear(in_features=6400, out_features=16, bias=False)
+                    (0): Linear(in_features=6400, out_features=7, bias=False)
+                    (1): Linear(in_features=6400, out_features=14, bias=False)
+                    (2): Linear(in_features=6400, out_features=9, bias=False)
+                    (3): Linear(in_features=6400, out_features=34, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
                   (layer_24_35): ModuleDict(
-                    (0): Linear(in_features=16, out_features=1600, bias=False)
-                    (1): Linear(in_features=16, out_features=1600, bias=False)
-                    (2): Linear(in_features=16, out_features=1600, bias=False)
-                    (3): Linear(in_features=16, out_features=1600, bias=False)
+                    (0): Linear(in_features=7, out_features=1600, bias=False)
+                    (1): Linear(in_features=14, out_features=1600, bias=False)
+                    (2): Linear(in_features=9, out_features=1600, bias=False)
+                    (3): Linear(in_features=34, out_features=1600, bias=False)
                   )
                 )
                 (lora_embedding_A): ParameterDict()
@@ -242,7 +242,7 @@ PeftModelForCausalLM(
           )
           (36-47): 12 x GPT2Block(
             (ln_1): LayerNorm((1600,), eps=1e-05, elementwise_affine=True)
-            (attn): GPT2Attention(
+            (attn): GPT2FlashAttention2(
               (c_attn): lora.Linear(
                 (base_layer): Conv1D(nf=4800, nx=1600)
                 (lora_dropout): ModuleDict(
@@ -250,20 +250,20 @@ PeftModelForCausalLM(
                 )
                 (lora_A): ModuleDict(
                   (layer_36_47): ModuleDict(
-                    (0): Linear(in_features=1600, out_features=13, bias=False)
-                    (1): Linear(in_features=1600, out_features=13, bias=False)
-                    (2): Linear(in_features=1600, out_features=13, bias=False)
-                    (3): Linear(in_features=1600, out_features=13, bias=False)
-                    (4): Linear(in_features=1600, out_features=13, bias=False)
+                    (0): Linear(in_features=1600, out_features=7, bias=False)
+                    (1): Linear(in_features=1600, out_features=14, bias=False)
+                    (2): Linear(in_features=1600, out_features=9, bias=False)
+                    (3): Linear(in_features=1600, out_features=31, bias=False)
+                    (4): Linear(in_features=1600, out_features=3, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
                   (layer_36_47): ModuleDict(
-                    (0): Linear(in_features=13, out_features=4800, bias=False)
-                    (1): Linear(in_features=13, out_features=4800, bias=False)
-                    (2): Linear(in_features=13, out_features=4800, bias=False)
-                    (3): Linear(in_features=13, out_features=4800, bias=False)
-                    (4): Linear(in_features=13, out_features=4800, bias=False)
+                    (0): Linear(in_features=7, out_features=4800, bias=False)
+                    (1): Linear(in_features=14, out_features=4800, bias=False)
+                    (2): Linear(in_features=9, out_features=4800, bias=False)
+                    (3): Linear(in_features=31, out_features=4800, bias=False)
+                    (4): Linear(in_features=3, out_features=4800, bias=False)
                   )
                 )
                 (lora_embedding_A): ParameterDict()
@@ -277,20 +277,20 @@ PeftModelForCausalLM(
                 )
                 (lora_A): ModuleDict(
                   (layer_36_47): ModuleDict(
-                    (0): Linear(in_features=1600, out_features=13, bias=False)
-                    (1): Linear(in_features=1600, out_features=13, bias=False)
-                    (2): Linear(in_features=1600, out_features=13, bias=False)
-                    (3): Linear(in_features=1600, out_features=13, bias=False)
-                    (4): Linear(in_features=1600, out_features=13, bias=False)
+                    (0): Linear(in_features=1600, out_features=7, bias=False)
+                    (1): Linear(in_features=1600, out_features=14, bias=False)
+                    (2): Linear(in_features=1600, out_features=9, bias=False)
+                    (3): Linear(in_features=1600, out_features=31, bias=False)
+                    (4): Linear(in_features=1600, out_features=3, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
                   (layer_36_47): ModuleDict(
-                    (0): Linear(in_features=13, out_features=1600, bias=False)
-                    (1): Linear(in_features=13, out_features=1600, bias=False)
-                    (2): Linear(in_features=13, out_features=1600, bias=False)
-                    (3): Linear(in_features=13, out_features=1600, bias=False)
-                    (4): Linear(in_features=13, out_features=1600, bias=False)
+                    (0): Linear(in_features=7, out_features=1600, bias=False)
+                    (1): Linear(in_features=14, out_features=1600, bias=False)
+                    (2): Linear(in_features=9, out_features=1600, bias=False)
+                    (3): Linear(in_features=31, out_features=1600, bias=False)
+                    (4): Linear(in_features=3, out_features=1600, bias=False)
                   )
                 )
                 (lora_embedding_A): ParameterDict()
@@ -310,20 +310,20 @@ PeftModelForCausalLM(
                 )
                 (lora_A): ModuleDict(
                   (layer_36_47): ModuleDict(
-                    (0): Linear(in_features=6400, out_features=13, bias=False)
-                    (1): Linear(in_features=6400, out_features=13, bias=False)
-                    (2): Linear(in_features=6400, out_features=13, bias=False)
-                    (3): Linear(in_features=6400, out_features=13, bias=False)
-                    (4): Linear(in_features=6400, out_features=13, bias=False)
+                    (0): Linear(in_features=6400, out_features=7, bias=False)
+                    (1): Linear(in_features=6400, out_features=14, bias=False)
+                    (2): Linear(in_features=6400, out_features=9, bias=False)
+                    (3): Linear(in_features=6400, out_features=31, bias=False)
+                    (4): Linear(in_features=6400, out_features=3, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
                   (layer_36_47): ModuleDict(
-                    (0): Linear(in_features=13, out_features=1600, bias=False)
-                    (1): Linear(in_features=13, out_features=1600, bias=False)
-                    (2): Linear(in_features=13, out_features=1600, bias=False)
-                    (3): Linear(in_features=13, out_features=1600, bias=False)
-                    (4): Linear(in_features=13, out_features=1600, bias=False)
+                    (0): Linear(in_features=7, out_features=1600, bias=False)
+                    (1): Linear(in_features=14, out_features=1600, bias=False)
+                    (2): Linear(in_features=9, out_features=1600, bias=False)
+                    (3): Linear(in_features=31, out_features=1600, bias=False)
+                    (4): Linear(in_features=3, out_features=1600, bias=False)
                   )
                 )
                 (lora_embedding_A): ParameterDict()

@@ -337,6 +337,14 @@ class LoraConfig(PeftConfig):
         },
     )
 
+    adapter_labels: Optional[list[str]] = field(
+        default=None
+    )
+
+    r_a: Optional[list[int]] = field(
+        default=None
+    )
+
     def to_dict(self):
         """
         Returns the configuration for your adapter model as a dictionary. Removes runtime configurations.

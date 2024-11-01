@@ -204,6 +204,8 @@ class LoraModel(BaseTuner):
             "loaded_in_4bit": getattr(self.model, "is_loaded_in_4bit", False),
             "num_adapters_per_layer": lora_config.num_adapters_per_layer,
             "layer_group": lora_config.layer_group,
+            "adapter_labels": lora_config.adapter_labels,
+            "r_a": lora_config.r_a
         }
         # for torchao merging, we need the get_apply_tensor_subclass from the quantization config
         try:

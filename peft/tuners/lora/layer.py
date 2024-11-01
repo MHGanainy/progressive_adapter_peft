@@ -42,6 +42,7 @@ class LoraLayer(BaseTunerLayer):
         self.num_adapters_per_layer = kwargs.get('num_adapters_per_layer', 1)
         self.layer_group = kwargs.get('layer_group', 1)
         self.base_layer = base_layer
+        self.r_a = kwargs.get('r_a', None)
         self.r = {}
         self.lora_alpha = {}
         self.scaling = {}
@@ -107,12 +108,17 @@ class LoraLayer(BaseTunerLayer):
     def update_layer(
         self, adapter_name, r, lora_alpha, lora_dropout, init_lora_weights, use_rslora, use_dora: bool = False
     ):
+        if not self.r_a:
+            raise ValueError("`r_a` (list of ranks) must be provided.")
+
+        if len(self.r_a) != self.num_adapters_per_layer:
+            raise ValueError("Length of `r_a` must match `num_adapters_per_layer`.")
         # Check for positive rank
         if r <= 0:
             raise ValueError(f"`r` should be a positive integer value but the value passed is {r}")
 
-        self.r[adapter_name] = r
-        self.lora_alpha[adapter_name] = lora_alpha
+        self.r[adapter_name] = {}
+        self.lora_alpha[adapter_name] = {}  # Initialize as a dict
         num_adapters = self.num_adapters_per_layer  # Get from kwargs or set explicitly
 
         # Initialize lora_dropout if not already done
@@ -125,17 +131,28 @@ class LoraLayer(BaseTunerLayer):
         # Create multiple adapters using ModuleDict indexed by adapter indices (as strings)
         self.lora_A[adapter_name] = nn.ModuleDict()
         self.lora_B[adapter_name] = nn.ModuleDict()
+        scaling = {}
 
-        for idx in range(num_adapters):
-            adapter_idx_str = str(idx)  # Convert index to string for ModuleDict
-            self.lora_A[adapter_name][adapter_idx_str] = nn.Linear(self.in_features, r, bias=False)
-            self.lora_B[adapter_name][adapter_idx_str] = nn.Linear(r, self.out_features, bias=False)
+        for idx, rank in enumerate(self.r_a):
+            adapter_idx_str = str(idx)
+            if rank <= 0:
+                raise ValueError(f"`r` should be a positive integer value but got {rank} for adapter index {idx}")
 
-        # Set scaling for each adapter
-        if use_rslora:
-            scaling = {str(idx): lora_alpha / math.sqrt(r) for idx in range(num_adapters)}
-        else:
-            scaling = {str(idx): lora_alpha / r for idx in range(num_adapters)}
+            # Set rank per adapter index
+            self.r[adapter_name][adapter_idx_str] = rank
+            # Set lora_alpha per adapter index
+            lora_alpha = 2 * rank
+            self.lora_alpha[adapter_name][adapter_idx_str] = lora_alpha
+
+            self.lora_A[adapter_name][adapter_idx_str] = nn.Linear(self.in_features, rank, bias=False)
+            self.lora_B[adapter_name][adapter_idx_str] = nn.Linear(rank, self.out_features, bias=False)
+
+            # Set scaling for each adapter
+            if use_rslora:
+                scaling[adapter_idx_str] = lora_alpha / math.sqrt(rank)
+            else:
+                scaling[adapter_idx_str] = lora_alpha / rank
+
         self.scaling[adapter_name] = scaling
 
         # Initialize adapter weights using reset_lora_parameters
@@ -152,18 +169,17 @@ class LoraLayer(BaseTunerLayer):
             return
 
         if adapter_name in self.lora_A.keys():
-            num_adapters = len(self.lora_A[adapter_name])
-            for idx in range(num_adapters):
-                adapter_idx_str = str(idx)
+            for adapter_idx_str in self.lora_A[adapter_name].keys():
+                rank = self.r[adapter_name][adapter_idx_str]
+                lora_alpha = self.lora_alpha[adapter_name][adapter_idx_str]
                 lora_A_weight = self.lora_A[adapter_name][adapter_idx_str].weight
                 lora_B_weight = self.lora_B[adapter_name][adapter_idx_str].weight
 
                 if init_lora_weights is True:
-                    # Initialize A the same way as the default for nn.Linear and B to zero
                     nn.init.kaiming_uniform_(lora_A_weight, a=math.sqrt(5))
                     nn.init.zeros_(lora_B_weight)
                 elif init_lora_weights.lower() == "gaussian":
-                    nn.init.normal_(lora_A_weight, std=1 / self.r[adapter_name])
+                    nn.init.normal_(lora_A_weight, std=1 / rank)
                     nn.init.zeros_(lora_B_weight)
                 else:
                     raise ValueError(f"Unknown initialization method '{init_lora_weights}'")
@@ -562,7 +578,7 @@ class Linear(nn.Module, LoraLayer):
     def forward(
         self,
         x: torch.Tensor,
-        task_types= None,
+        task_types=None,
         *args: Any,
         **kwargs: Any
     ) -> torch.Tensor:
@@ -586,9 +602,11 @@ class Linear(nn.Module, LoraLayer):
             adapter_name = 'layer_36_47'
         else:
             raise ValueError(f"Invalid layer group: {self.layer_group}")
+
         # Proceed with base computation
         result = self.base_layer(x, *args, **kwargs)
         torch_result_dtype = result.dtype
+
         # Process each unique adapter index
         unique_adapter_indices = torch.unique(adapter_indices)
         for adapter_idx in unique_adapter_indices:
