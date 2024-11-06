@@ -214,7 +214,7 @@ with open('trainable_parameters.txt', 'w') as f:
             f.write(f"Parameter Name: {name}\n")
 
 # 5. Define training arguments
-batch_size: int = 8
+batch_size: int = 4
 num_train_epochs = 1
 steps_per_epoch = len(train_dataset) // batch_size
 total_steps = int(steps_per_epoch * num_train_epochs)
