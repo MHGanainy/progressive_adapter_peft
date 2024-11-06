@@ -12,6 +12,7 @@ from peft import get_peft_model, LoraConfig, TaskType
 import multiprocessing
 import math
 import os
+from huggingface_hub import HfApi
 
 # 0. Set seeds for reproducibility
 def set_seed(seed):
@@ -50,11 +51,11 @@ block_size = 1024
 
 # Task types mapping
 dataset_name_to_task_types = {
-    'santoshtyss/uk_courts_cases': [0, 1, 3, 3],
-    'santoshtyss/eu-court-cases': [0, 0, 1, 1],
-    'santoshtyss/indian_courts_cases': [0, 1, 2, 2],
-    'santoshtyss/ecthr_cases': [0, 0, 0, 0],
-    'santoshtyss/canadian_court_cases': [0, 1, 3, 4]
+    'santoshtyss/uk_courts_cases': [0,0,0,1,1],
+    'santoshtyss/eu-court-cases': [0,1,1,2,3],
+    'santoshtyss/indian_courts_cases': [0,0,0,0,0],
+    'santoshtyss/ecthr_cases': [0,1,2,3,4],
+    'santoshtyss/canadian_court_cases': [0,0,0,1,2]
 }
 
 # 3. Tokenize the dataset
@@ -84,7 +85,7 @@ def tokenize_function(examples):
     # Map the dataset_name to task_types
     dataset_names = examples['dataset_name']
     task_types_list = [
-        dataset_name_to_task_types.get(name, [0, 0, 0, 0]) if name in dataset_name_to_task_types else print(f"{name} not found") or [0, 0, 0, 0]
+        dataset_name_to_task_types.get(name) if name in dataset_name_to_task_types else print(f"{name} not found") or None
         for name in dataset_names
     ]
     result['task_types'] = task_types_list
@@ -119,67 +120,82 @@ eval_dataset = prepare_dataset(dataset["validation"].select(range(0,10)), "valid
 
 # 4. Apply PEFT with LoRA configurations
 # Define LoRA configurations
-peft_config_layers_0_11 = LoraConfig(
+peft_config_layers_0_8 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=64,
     lora_alpha=128,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(0, 12)),
+    layers_to_transform=list(range(0, 9)),
     layers_pattern="h",
     num_adapters_per_layer=1,
     layer_group=0,
-    adapter_labels=["AC"],
+    adapter_labels=["EU,Indian,ECHR,UK,CAC"],
     r_a=[64]
 )
 
-peft_config_layers_12_23 = LoraConfig(
+peft_config_layers_9_10 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=32,
     lora_alpha=64,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(12, 24)),
+    layers_to_transform=list(range(9, 11)),
     layers_pattern="h",
     num_adapters_per_layer=2,
     layer_group=1,
-    adapter_labels=['EU','CC'],
-    r_a=[21,43]
+    adapter_labels=['Indian,UK,CAC','EU,ECHR'],
+    r_a=[43,21]
 )
 
-peft_config_layers_24_35 = LoraConfig(
+peft_config_layers_11 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=16,
     lora_alpha=32,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(24, 36)),
+    layers_to_transform=[11],
     layers_pattern="h",
-    num_adapters_per_layer=4,
+    num_adapters_per_layer=3,
     layer_group=2,
-    adapter_labels=['ECHR','EU','IC','ACC'],
-    r_a=[7,14,9,34]
+    adapter_labels=['Indian,UK,CAC','EU','ECHR'],
+    r_a=[43,14,7]
 )
 
-peft_config_layers_36_47 = LoraConfig(
+peft_config_layers_12_18 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=13,
     lora_alpha=26,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(36, 48)),
+    layers_to_transform=list(range(12, 19)),
+    layers_pattern="h",
+    num_adapters_per_layer=4,
+    layer_group=3,
+    adapter_labels=['Indian','UK,CAC','EU','ECHR'],
+    r_a=[9,34,14,7]
+)
+
+peft_config_layers_19_47 = LoraConfig(
+    task_type=TaskType.CAUSAL_LM,
+    r=13,
+    lora_alpha=26,
+    target_modules=['c_attn', 'c_proj'],
+    lora_dropout=0.1,
+    layers_to_transform=list(range(19, 48)),
     layers_pattern="h",
     num_adapters_per_layer=5,
-    layer_group=3,
-    adapter_labels=['ECHR','EU','IC','UKC','CAC'],
-    r_a=[7,14,9,31,3]
+    layer_group=4,
+    adapter_labels=['Indian','UK','CAC','EU','ECHR'],
+    r_a=[9,31,3,14,7]
 )
 
 # Apply PEFT to the model
-model = get_peft_model(model, peft_config_layers_0_11, adapter_name="layer_0_11")
-model.add_adapter("layer_12_23", peft_config_layers_12_23)
-model.add_adapter("layer_24_35", peft_config_layers_24_35)
-model.add_adapter("layer_36_47", peft_config_layers_36_47)
+model = get_peft_model(model, peft_config_layers_0_8, adapter_name="layers_0_8")
+model.add_adapter("layers_9_10", peft_config_layers_9_10)
+model.add_adapter("layers_11", peft_config_layers_11)
+model.add_adapter("layers_12_18", peft_config_layers_12_18)
+model.add_adapter("layers_19_47", peft_config_layers_19_47)
 
 # Manually set requires_grad=True for all adapter parameters
 for name, param in model.named_parameters():
@@ -246,3 +262,25 @@ perplexity = math.exp(metrics["eval_loss"])
 metrics["perplexity"] = perplexity
 
 trainer.log_metrics("eval", metrics)
+
+
+# 8. Save the model, tokenizer, and training arguments
+# Set your Hugging Face token
+huggingface_token = "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"
+
+# Define your output directory and repository name
+output_dir = "./gpt2-xl-peft-lora-trained"
+repo_name = "MHGanainy/gpt2-xl-peft-lora-progressive-adapter-layer-comp-vocab-overlap"
+
+# 1. Manually create the repository if it does not exist
+api = HfApi()
+api.create_repo(repo_id=repo_name, token=huggingface_token, exist_ok=True)
+
+# 2. Save the model, tokenizer, and training arguments
+trainer.model.save_pretrained(output_dir)
+tokenizer.save_pretrained(output_dir)
+
+# 3. Push the model and tokenizer to the Hugging Face Hub
+trainer.model.push_to_hub(repo_name, use_auth_token=huggingface_token)
+tokenizer.push_to_hub(repo_name, use_auth_token=huggingface_token)
+
