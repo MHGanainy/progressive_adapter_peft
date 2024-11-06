@@ -593,15 +593,13 @@ class Linear(nn.Module, LoraLayer):
         adapter_indices = task_types[:, self.layer_group]  # shape: (batch_size,)
         # Determine the adapter name for the current layer group
         if self.layer_group == 0:
-            adapter_name = 'layers_0_8'
+            adapter_name = 'layers_0_43'
         elif self.layer_group == 1:
-            adapter_name = 'layers_9_10'
+            adapter_name = 'layers_44'
         elif self.layer_group == 2:
-            adapter_name = 'layers_11'
+            adapter_name = 'layers_45'
         elif self.layer_group == 3:
-            adapter_name = 'layers_12_18'
-        elif self.layer_group == 4:
-            adapter_name = 'layers_19_47'
+            adapter_name = 'layers_46_47'
         else:
             raise ValueError(f"Invalid layer group: {self.layer_group}")
 

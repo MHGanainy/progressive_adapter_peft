@@ -51,11 +51,11 @@ block_size = 1024
 
 # Task types mapping
 dataset_name_to_task_types = {
-    'santoshtyss/uk_courts_cases': [0,0,0,1,1],
-    'santoshtyss/eu-court-cases': [0,1,1,2,3],
-    'santoshtyss/indian_courts_cases': [0,0,0,0,0],
-    'santoshtyss/ecthr_cases': [0,1,2,3,4],
-    'santoshtyss/canadian_court_cases': [0,0,0,1,2]
+    'santoshtyss/uk_courts_cases': [0,1,3,3],
+    'santoshtyss/eu-court-cases': [0,0,0,0],
+    'santoshtyss/indian_courts_cases': [0,0,1,1],
+    'santoshtyss/ecthr_cases': [0,1,2,2],
+    'santoshtyss/canadian_court_cases': [0,1,3,4]
 }
 
 # 3. Tokenize the dataset
@@ -120,13 +120,13 @@ eval_dataset = prepare_dataset(dataset["validation"].select(range(0,10)), "valid
 
 # 4. Apply PEFT with LoRA configurations
 # Define LoRA configurations
-peft_config_layers_0_8 = LoraConfig(
+peft_config_layers_0_43 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=64,
     lora_alpha=128,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(0, 9)),
+    layers_to_transform=list(range(0, 44)),
     layers_pattern="h",
     num_adapters_per_layer=1,
     layer_group=0,
@@ -134,68 +134,53 @@ peft_config_layers_0_8 = LoraConfig(
     r_a=[64]
 )
 
-peft_config_layers_9_10 = LoraConfig(
+peft_config_layers_44 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=32,
     lora_alpha=64,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(9, 11)),
+    layers_to_transform=[44],
     layers_pattern="h",
     num_adapters_per_layer=2,
     layer_group=1,
-    adapter_labels=['Indian,UK,CAC','EU,ECHR'],
-    r_a=[43,21]
+    adapter_labels=['EU,Indian','ECHR,UK,CAC'],
+    r_a=[23,41]
 )
 
-peft_config_layers_11 = LoraConfig(
+peft_config_layers_45 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=16,
     lora_alpha=32,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=[11],
-    layers_pattern="h",
-    num_adapters_per_layer=3,
-    layer_group=2,
-    adapter_labels=['Indian,UK,CAC','EU','ECHR'],
-    r_a=[43,14,7]
-)
-
-peft_config_layers_12_18 = LoraConfig(
-    task_type=TaskType.CAUSAL_LM,
-    r=13,
-    lora_alpha=26,
-    target_modules=['c_attn', 'c_proj'],
-    lora_dropout=0.1,
-    layers_to_transform=list(range(12, 19)),
+    layers_to_transform=[45],
     layers_pattern="h",
     num_adapters_per_layer=4,
-    layer_group=3,
-    adapter_labels=['Indian','UK,CAC','EU','ECHR'],
-    r_a=[9,34,14,7]
+    layer_group=2,
+    adapter_labels=['EU','Indian','ECHR','UK,CAC'],
+    r_a=[14,9,7,34]
 )
 
-peft_config_layers_19_47 = LoraConfig(
+peft_config_layers_46_47 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=13,
     lora_alpha=26,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(19, 48)),
+    layers_to_transform=list(range(46, 48)),
     layers_pattern="h",
     num_adapters_per_layer=5,
-    layer_group=4,
-    adapter_labels=['Indian','UK','CAC','EU','ECHR'],
-    r_a=[9,31,3,14,7]
+    layer_group=3,
+    adapter_labels=['EU','Indian','ECHR','UKC','CAC'],
+    r_a=[14,9,7,31,3]
 )
 
 # Apply PEFT to the model
-model = get_peft_model(model, peft_config_layers_0_8, adapter_name="layers_0_8")
-model.add_adapter("layers_9_10", peft_config_layers_9_10)
-model.add_adapter("layers_11", peft_config_layers_11)
-model.add_adapter("layers_12_18", peft_config_layers_12_18)
-model.add_adapter("layers_19_47", peft_config_layers_19_47)
+model = get_peft_model(model, peft_config_layers_0_43, adapter_name="layers_0_43")
+model.add_adapter("layers_44", peft_config_layers_44)
+model.add_adapter("layers_45", peft_config_layers_45)
+model.add_adapter("layers_46_47", peft_config_layers_46_47)
 
 # Manually set requires_grad=True for all adapter parameters
 for name, param in model.named_parameters():
@@ -270,7 +255,7 @@ huggingface_token = "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"
 
 # Define your output directory and repository name
 output_dir = "./gpt2-xl-peft-lora-trained"
-repo_name = "MHGanainy/gpt2-xl-peft-lora-progressive-adapter-layer-comp-vocab-overlap"
+repo_name = "MHGanainy/gpt2-xl-peft-lora-progressive-adapter-layer-comp-des"
 
 # 1. Manually create the repository if it does not exist
 api = HfApi()
