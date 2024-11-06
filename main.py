@@ -113,10 +113,10 @@ def prepare_dataset(dataset_split, split="train"):
     return lm_dataset
 
 print("Preprocessing training data...")
-train_dataset = prepare_dataset(dataset["train"].select(range(0,10)), "train")
+train_dataset = prepare_dataset(dataset["train"], "train")
 
 print("Preprocessing validation data...")
-eval_dataset = prepare_dataset(dataset["validation"].select(range(0,10)), "validation")
+eval_dataset = prepare_dataset(dataset["validation"], "validation")
 
 # 4. Apply PEFT with LoRA configurations
 # Define LoRA configurations
@@ -214,7 +214,7 @@ with open('trainable_parameters.txt', 'w') as f:
             f.write(f"Parameter Name: {name}\n")
 
 # 5. Define training arguments
-batch_size: int = 1
+batch_size: int = 4
 num_train_epochs = 1
 steps_per_epoch = len(train_dataset) // batch_size
 total_steps = int(steps_per_epoch * num_train_epochs)
@@ -223,20 +223,26 @@ training_args = TrainingArguments(
     output_dir=f"./gpt2-xl-peft-lora",
     learning_rate=2e-5,
     per_device_train_batch_size=batch_size,
+    # gradient_accumulation_steps=batch_size,
     per_device_eval_batch_size=batch_size,
     num_train_epochs=num_train_epochs,
     weight_decay=0.01,
     warmup_steps=int(0.1 * total_steps),
     logging_steps=100,
-    fp16=True,  # Use mixed precision training
-    max_grad_norm=1.0,
-    optim="adamw_torch",
+    fp16=False,  # Use mixed precision training
+    bf16=True,
+    max_grad_norm=None,
+    optim="adamw_torch_fused",
     lr_scheduler_type="cosine",
     warmup_ratio=0.1,
     ddp_find_unused_parameters=True,
     save_strategy="no",
     report_to="none",
     seed=seed,  # Set seed for TrainingArguments
+    evaluation_strategy="no",
+    dataloader_num_workers=8,
+    torch_compile=True,
+    dataloader_persistent_workers=True,
 )
 
 print(f"Steps per epoch: {steps_per_epoch}")
