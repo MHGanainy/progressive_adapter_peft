@@ -755,7 +755,7 @@ def is_torchdynamo_compiling():
     try:
         import torch
 
-        return torch.compiler.is_compiling()
+        return torch._dynamo.is_compiling()
     except Exception:
         try:
             import torch._dynamo as dynamo  # noqa: F401
