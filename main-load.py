@@ -275,7 +275,7 @@ print("Preprocessing validation data...")
 eval_dataset = prepare_dataset(dataset["validation"], "validation")
 
 # 6. Initialize Trainer for evaluation
-batch_size = 32
+batch_size = 8
 
 training_args = TrainingArguments(
     output_dir="./evaluation_output",
