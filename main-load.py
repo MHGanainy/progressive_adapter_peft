@@ -121,27 +121,79 @@ def load_adapter_weights(model, adapter_name, repo_id, subfolder=None):
         repo_id=repo_id,
         filename=filename,
         subfolder=subfolder,
-        cache_dir='./cache'  # Optional: specify a cache directory
+        cache_dir='./cache'  # Optional
     )
     # Load the state_dict using safetensors
     adapter_state_dict = load_file(state_dict_path)
 
-    # Remove 'base_model.model.' prefix from keys
+    # Adjust keys to match the model's state_dict
     adjusted_state_dict = {}
     for k, v in adapter_state_dict.items():
-        new_key = k.replace('base_model.model.', '')
+        new_key = k  # Keep the key as is (since we don't remove any prefix)
+
+        # Handle 'lora_A' and 'lora_B' keys
+        if 'lora_A' in new_key or 'lora_B' in new_key:
+            parts = new_key.split('.')
+            # Find the index of 'lora_A' or 'lora_B'
+            lora_idx = parts.index('lora_A') if 'lora_A' in parts else parts.index('lora_B')
+            # Insert adapter_name after 'lora_A' or 'lora_B'
+            parts.insert(lora_idx + 1, adapter_name)
+            new_key = '.'.join(parts)
+
         adjusted_state_dict[new_key] = v
 
-    # Get the adapter module
-    adapter_module = model.base_model
+    # Save a copy of model parameters before loading the adapter
+    model_state_dict_before = {k: v.clone() for k, v in model.state_dict().items()}
 
-    # Load the adapter weights into the model's adapter modules
-    missing_keys, unexpected_keys = adapter_module.load_state_dict(adjusted_state_dict, strict=False)
+    # Load the adjusted adapter weights into the model
+    model_state_dict = model.state_dict()
+    # Keep track of keys that are actually in the model's state dict
+    keys_in_model = []
+    for key in adjusted_state_dict.keys():
+        if key in model_state_dict:
+            keys_in_model.append(key)
+            model_state_dict[key] = adjusted_state_dict[key]
+        else:
+            print(f"Key '{key}' from adjusted state dict not found in model's state dict.")
+
+    # Now load the updated state dict into the model and capture the missing and unexpected keys
+    load_result = model.load_state_dict(model_state_dict, strict=False)
+    missing_keys = load_result.missing_keys
+    unexpected_keys = load_result.unexpected_keys
+
+    # Verify that parameters have been updated
+    updated_params = []
+    model_state_dict_after = model.state_dict()
+    for key in keys_in_model:
+        before = model_state_dict_before[key]
+        after = model_state_dict_after[key]
+        if not torch.equal(before, after):
+            updated_params.append(key)
+
+    # Compute boolean indicating whether all parameters have been updated
+    all_params_updated = len(updated_params) == len(keys_in_model)
+
 
     if missing_keys:
-        print(f"Missing keys when loading adapter {adapter_name}: {missing_keys}")
+        print(f"\nMissing keys when loading adapter '{adapter_name}': {missing_keys}")
     if unexpected_keys:
-        print(f"Unexpected keys when loading adapter {adapter_name}: {unexpected_keys}")
+        print(f"\nUnexpected keys when loading adapter '{adapter_name}': {unexpected_keys}")
+
+    if not missing_keys and not unexpected_keys and all_params_updated:
+        print(f"\nAdapter '{adapter_name}' loaded successfully with all parameters updated.")
+    else:
+        print(f"\nAdapter '{adapter_name}' loading issues detected.")
+        if not all_params_updated:
+            print(f"Not all parameters were updated for adapter '{adapter_name}'.")
+        print(f"Total parameters expected to update: {len(keys_in_model)}")
+        print(f"Total parameters actually updated: {len(updated_params)}")
+
+    # Return the boolean indicating whether all parameters were updated
+    return all_params_updated
+
+
+
+
 
 # Load weights for each adapter
 load_adapter_weights(model, 'layers_0_43', repo_id, subfolder='layers_0_43')
@@ -223,7 +275,7 @@ print("Preprocessing validation data...")
 eval_dataset = prepare_dataset(dataset["validation"], "validation")
 
 # 6. Initialize Trainer for evaluation
-batch_size = 1
+batch_size = 32
 
 training_args = TrainingArguments(
     output_dir="./evaluation_output",
