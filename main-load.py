@@ -287,9 +287,9 @@ def prepare_dataset(dataset_split, split="train"):
 print("Preprocessing validation data...")
 # cluster_id = 0 # echr
 # cluster_id = 1 # eu
-cluster_id = 2 # uk
+# cluster_id = 2 # uk
 # cluster_id = 3 # indian
-# cluster_id = 4 # canadian
+cluster_id = 4 # canadian
 eval_dataset = prepare_dataset(dataset["validation"].filter(lambda x: x['cluster_id'] == cluster_id), "validation")
 
 # 6. Initialize Trainer for evaluation
