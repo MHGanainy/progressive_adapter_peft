@@ -113,10 +113,10 @@ def prepare_dataset(dataset_split, split="train"):
     return lm_dataset
 
 print("Preprocessing training data...")
-train_dataset = prepare_dataset(dataset["train"].select(range(100)), "train")
+train_dataset = prepare_dataset(dataset["train"], "train")
 
 print("Preprocessing validation data...")
-eval_dataset = prepare_dataset(dataset["validation"].select(range(100)), "validation")
+eval_dataset = prepare_dataset(dataset["validation"], "validation")
 
 # 4. Apply PEFT with LoRA configurations
 # Define LoRA configurations
@@ -268,9 +268,9 @@ api = HfApi()
 api.create_repo(repo_id=repo_name, token=huggingface_token, exist_ok=True)
 
 # 2. Save the model, tokenizer, and training arguments
-model.save_pretrained(output_dir, save_adapter=True)
+trainer.model.save_pretrained(output_dir)
 tokenizer.save_pretrained(output_dir)
 
-# Push the adapter weights to the Hugging Face Hub
-model.push_to_hub(repo_name, use_auth_token=huggingface_token)
+# 3. Push the model and tokenizer to the Hugging Face Hub
+trainer.model.push_to_hub(repo_name, use_auth_token=huggingface_token)
 tokenizer.push_to_hub(repo_name, use_auth_token=huggingface_token)
