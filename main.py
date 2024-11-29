@@ -208,7 +208,7 @@ training_args = TrainingArguments(
     output_dir=f"./mgpt-peft-lora",
     learning_rate=2e-5,
     per_device_train_batch_size=batch_size,
-    # gradient_accumulation_steps=batch_size,
+    gradient_accumulation_steps=4,
     per_device_eval_batch_size=batch_size,
     num_train_epochs=num_train_epochs,
     weight_decay=0.01,
@@ -260,7 +260,7 @@ trainer.log_metrics("eval", metrics)
 huggingface_token = "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"
 
 # Define your output directory and repository name
-output_dir = "./mgpt-peft-lora-trained"
+output_dir = "./mgpt-peft-lora"
 repo_name = "MHGanainy/mgpt-ProAdapter-balanced"
 
 # 1. Manually create the repository if it does not exist
