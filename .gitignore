@@ -2,3 +2,6 @@
 gpt2-xl-peft-lora/
 peft/__pycache__/
 *.pyc
+mgpt-peft-lora-trained/*
+gpt2-xl-peft-lora-trained/*
+mgpt-peft-lora/*

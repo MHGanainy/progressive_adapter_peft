@@ -12,6 +12,7 @@ from peft import get_peft_model, LoraConfig, TaskType
 import multiprocessing
 import math
 import os
+from huggingface_hub import HfApi
 
 # 0. Set seeds for reproducibility
 def set_seed(seed):
@@ -29,14 +30,11 @@ seed = 42
 set_seed(seed)
 
 # 1. Initialize the tokenizer and model
-model_name = "gpt2-xl"
+model_name = "ai-forever/mGPT"
 
 # Load tokenizer
 tokenizer = AutoTokenizer.from_pretrained(model_name)
-# Ensure the tokenizer has a padding token
-if tokenizer.pad_token is None:
-    tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = 'left'
+
 
 # Load pre-trained GPT-2 XL model
 # Since you've modified the model classes in the transformers library,
@@ -44,17 +42,20 @@ if tokenizer.pad_token is None:
 model = AutoModelForCausalLM.from_pretrained(model_name, attn_implementation="flash_attention_2")
 
 # 2. Load your dataset
-dataset = load_dataset('MHGanainy/multi_clustering', 'lex-former-8-clustered-instance-b-dataset-cluster')
+dataset = load_dataset("MHGanainy/multilingual_caselaw", "meta-cluster-1024-sampled")
 
-block_size = 1024
+block_size = 2048
 
 # Task types mapping
 dataset_name_to_task_types = {
-    'santoshtyss/uk_courts_cases': [0, 1, 3, 3],
-    'santoshtyss/eu-court-cases': [0, 0, 1, 1],
-    'santoshtyss/indian_courts_cases': [0, 1, 2, 2],
-    'santoshtyss/ecthr_cases': [0, 0, 0, 0],
-    'santoshtyss/canadian_court_cases': [0, 1, 3, 4]
+    'Denmark_da_caselaw':     [0, 0, 0, 0],
+    'Switzerland_fr_caselaw': [0, 0, 1, 1],
+    'Belgium_fr_caselaw':     [0, 0, 1, 2],
+
+    'Switzerland_it_caselaw': [0, 1, 2, 3],
+    'Switzerland_de_caselaw': [0, 1, 3, 4],
+    'Germany_de_caselaw':     [0, 1, 3, 5],
+    
 }
 
 # 3. Tokenize the dataset
@@ -72,7 +73,7 @@ def tokenize_function(examples):
     labels = input_ids.copy()
 
     # Set the first 512 tokens of labels to -100
-    labels = [[-100]*512 + ids[512:] for ids in labels]
+    labels = [[-100]*1024 + ids[1024:] for ids in labels]
 
     # Set labels to -100 where input_ids == pad_token_id
     labels = [
@@ -84,7 +85,7 @@ def tokenize_function(examples):
     # Map the dataset_name to task_types
     dataset_names = examples['dataset_name']
     task_types_list = [
-        dataset_name_to_task_types.get(name, [0, 0, 0, 0]) if name in dataset_name_to_task_types else print(f"{name} not found") or [0, 0, 0, 0]
+        dataset_name_to_task_types.get(name) if name in dataset_name_to_task_types else print(f"{name} not found") or None
         for name in dataset_names
     ]
     result['task_types'] = task_types_list
@@ -112,10 +113,10 @@ def prepare_dataset(dataset_split, split="train"):
     return lm_dataset
 
 print("Preprocessing training data...")
-train_dataset = prepare_dataset(dataset["train"].select(range(0,10)), "train")
+train_dataset = prepare_dataset(dataset["train"], "train")
 
 print("Preprocessing validation data...")
-eval_dataset = prepare_dataset(dataset["validation"].select(range(0,10)), "validation")
+eval_dataset = prepare_dataset(dataset["validation"], "validation")
 
 # 4. Apply PEFT with LoRA configurations
 # Define LoRA configurations
@@ -129,7 +130,7 @@ peft_config_layers_0_11 = LoraConfig(
     layers_pattern="h",
     num_adapters_per_layer=1,
     layer_group=0,
-    adapter_labels=["AC"],
+    adapter_labels=["ALL"],
     r_a=[64]
 )
 
@@ -143,8 +144,8 @@ peft_config_layers_12_23 = LoraConfig(
     layers_pattern="h",
     num_adapters_per_layer=2,
     layer_group=1,
-    adapter_labels=['EU','CC'],
-    r_a=[21,43]
+    adapter_labels=['DA_FR','IT_DE'],
+    r_a=[32,32]
 )
 
 peft_config_layers_24_35 = LoraConfig(
@@ -157,8 +158,8 @@ peft_config_layers_24_35 = LoraConfig(
     layers_pattern="h",
     num_adapters_per_layer=4,
     layer_group=2,
-    adapter_labels=['ECHR','EU','IC','ACC'],
-    r_a=[7,14,9,34]
+    adapter_labels=['DA','FR','IT','DE'],
+    r_a=[16,16,16,16]
 )
 
 peft_config_layers_36_47 = LoraConfig(
@@ -169,10 +170,10 @@ peft_config_layers_36_47 = LoraConfig(
     lora_dropout=0.1,
     layers_to_transform=list(range(36, 48)),
     layers_pattern="h",
-    num_adapters_per_layer=5,
+    num_adapters_per_layer=6,
     layer_group=3,
-    adapter_labels=['ECHR','EU','IC','UKC','CAC'],
-    r_a=[7,14,9,31,3]
+    adapter_labels=['DA','S_FR','B_FR','IT','S_DE','G_DE'],
+    r_a=[11,11,11,11,11,11]
 )
 
 # Apply PEFT to the model
@@ -204,23 +205,29 @@ steps_per_epoch = len(train_dataset) // batch_size
 total_steps = int(steps_per_epoch * num_train_epochs)
 
 training_args = TrainingArguments(
-    output_dir=f"./gpt2-xl-peft-lora",
+    output_dir=f"./mgpt-peft-lora",
     learning_rate=2e-5,
     per_device_train_batch_size=batch_size,
+    # gradient_accumulation_steps=batch_size,
     per_device_eval_batch_size=batch_size,
     num_train_epochs=num_train_epochs,
     weight_decay=0.01,
     warmup_steps=int(0.1 * total_steps),
     logging_steps=100,
-    fp16=True,  # Use mixed precision training
-    max_grad_norm=1.0,
-    optim="adamw_torch",
+    fp16=False,  # Use mixed precision training
+    bf16=True,
+    max_grad_norm=None,
+    optim="adamw_torch_fused",
     lr_scheduler_type="cosine",
     warmup_ratio=0.1,
     ddp_find_unused_parameters=True,
     save_strategy="no",
     report_to="none",
     seed=seed,  # Set seed for TrainingArguments
+    evaluation_strategy="no",
+    dataloader_num_workers=8,
+    torch_compile=True,
+    dataloader_persistent_workers=True,
 )
 
 print(f"Steps per epoch: {steps_per_epoch}")
@@ -246,3 +253,24 @@ perplexity = math.exp(metrics["eval_loss"])
 metrics["perplexity"] = perplexity
 
 trainer.log_metrics("eval", metrics)
+
+
+# 8. Save the model, tokenizer, and training arguments
+# Set your Hugging Face token
+huggingface_token = "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"
+
+# Define your output directory and repository name
+output_dir = "./mgpt-peft-lora-trained"
+repo_name = "MHGanainy/mgpt-ProAdapter-balanced"
+
+# 1. Manually create the repository if it does not exist
+api = HfApi()
+api.create_repo(repo_id=repo_name, token=huggingface_token, exist_ok=True)
+
+# 2. Save the model, tokenizer, and training arguments
+trainer.model.save_pretrained(output_dir)
+tokenizer.save_pretrained(output_dir)
+
+# 3. Push the model and tokenizer to the Hugging Face Hub
+trainer.model.push_to_hub(repo_name, use_auth_token=huggingface_token)
+tokenizer.push_to_hub(repo_name, use_auth_token=huggingface_token)
