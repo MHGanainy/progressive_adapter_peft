@@ -113,20 +113,20 @@ def prepare_dataset(dataset_split, split="train"):
     return lm_dataset
 
 print("Preprocessing training data...")
-train_dataset = prepare_dataset(dataset["train"], "train")
+train_dataset = prepare_dataset(dataset["train"].select(range(100)), "train")
 
 print("Preprocessing validation data...")
-eval_dataset = prepare_dataset(dataset["validation"], "validation")
+eval_dataset = prepare_dataset(dataset["validation"].select(range(100)), "validation")
 
 # 4. Apply PEFT with LoRA configurations
 # Define LoRA configurations
-peft_config_layers_0_11 = LoraConfig(
+peft_config_layers_0_5 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=64,
     lora_alpha=128,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(0, 12)),
+    layers_to_transform=list(range(0, 6)),
     layers_pattern="h",
     num_adapters_per_layer=1,
     layer_group=0,
@@ -134,13 +134,13 @@ peft_config_layers_0_11 = LoraConfig(
     r_a=[64]
 )
 
-peft_config_layers_12_23 = LoraConfig(
+peft_config_layers_6_11 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=32,
     lora_alpha=64,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(12, 24)),
+    layers_to_transform=list(range(6, 12)),
     layers_pattern="h",
     num_adapters_per_layer=2,
     layer_group=1,
@@ -148,13 +148,13 @@ peft_config_layers_12_23 = LoraConfig(
     r_a=[17,47]
 )
 
-peft_config_layers_24_35 = LoraConfig(
+peft_config_layers_12_17 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=16,
     lora_alpha=32,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(24, 36)),
+    layers_to_transform=list(range(12, 18)),
     layers_pattern="h",
     num_adapters_per_layer=4,
     layer_group=2,
@@ -162,13 +162,13 @@ peft_config_layers_24_35 = LoraConfig(
     r_a=[3,14,21,26]
 )
 
-peft_config_layers_36_47 = LoraConfig(
+peft_config_layers_18_23 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=13,
     lora_alpha=26,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(36, 48)),
+    layers_to_transform=list(range(18, 24)),
     layers_pattern="h",
     num_adapters_per_layer=6,
     layer_group=3,
@@ -177,10 +177,10 @@ peft_config_layers_36_47 = LoraConfig(
 )
 
 # Apply PEFT to the model
-model = get_peft_model(model, peft_config_layers_0_11, adapter_name="layer_0_11")
-model.add_adapter("layer_12_23", peft_config_layers_12_23)
-model.add_adapter("layer_24_35", peft_config_layers_24_35)
-model.add_adapter("layer_36_47", peft_config_layers_36_47)
+model = get_peft_model(model, peft_config_layers_0_5, adapter_name="layer_0_5")
+model.add_adapter("layer_6_11", peft_config_layers_6_11)
+model.add_adapter("layer_12_17", peft_config_layers_12_17)
+model.add_adapter("layer_18_23", peft_config_layers_18_23)
 
 # Manually set requires_grad=True for all adapter parameters
 for name, param in model.named_parameters():

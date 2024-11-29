@@ -6,21 +6,21 @@ PeftModelForCausalLM(
         (wpe): Embedding(2048, 2048)
         (drop): Dropout(p=0.1, inplace=False)
         (h): ModuleList(
-          (0-11): 12 x GPT2Block(
+          (0-5): 6 x GPT2Block(
             (ln_1): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
             (attn): GPT2FlashAttention2(
               (c_attn): lora.Linear(
                 (base_layer): Conv1D(nf=6144, nx=2048)
                 (lora_dropout): ModuleDict(
-                  (layer_0_11): Dropout(p=0.1, inplace=False)
+                  (layer_0_5): Dropout(p=0.1, inplace=False)
                 )
                 (lora_A): ModuleDict(
-                  (layer_0_11): ModuleDict(
+                  (layer_0_5): ModuleDict(
                     (0): Linear(in_features=2048, out_features=64, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
-                  (layer_0_11): ModuleDict(
+                  (layer_0_5): ModuleDict(
                     (0): Linear(in_features=64, out_features=6144, bias=False)
                   )
                 )
@@ -31,15 +31,15 @@ PeftModelForCausalLM(
               (c_proj): lora.Linear(
                 (base_layer): Conv1D(nf=2048, nx=2048)
                 (lora_dropout): ModuleDict(
-                  (layer_0_11): Dropout(p=0.1, inplace=False)
+                  (layer_0_5): Dropout(p=0.1, inplace=False)
                 )
                 (lora_A): ModuleDict(
-                  (layer_0_11): ModuleDict(
+                  (layer_0_5): ModuleDict(
                     (0): Linear(in_features=2048, out_features=64, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
-                  (layer_0_11): ModuleDict(
+                  (layer_0_5): ModuleDict(
                     (0): Linear(in_features=64, out_features=2048, bias=False)
                   )
                 )
@@ -56,15 +56,15 @@ PeftModelForCausalLM(
               (c_proj): lora.Linear(
                 (base_layer): Conv1D(nf=2048, nx=8192)
                 (lora_dropout): ModuleDict(
-                  (layer_0_11): Dropout(p=0.1, inplace=False)
+                  (layer_0_5): Dropout(p=0.1, inplace=False)
                 )
                 (lora_A): ModuleDict(
-                  (layer_0_11): ModuleDict(
+                  (layer_0_5): ModuleDict(
                     (0): Linear(in_features=8192, out_features=64, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
-                  (layer_0_11): ModuleDict(
+                  (layer_0_5): ModuleDict(
                     (0): Linear(in_features=64, out_features=2048, bias=False)
                   )
                 )
@@ -76,22 +76,22 @@ PeftModelForCausalLM(
               (dropout): Dropout(p=0.1, inplace=False)
             )
           )
-          (12-23): 12 x GPT2Block(
+          (6-11): 6 x GPT2Block(
             (ln_1): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
             (attn): GPT2FlashAttention2(
               (c_attn): lora.Linear(
                 (base_layer): Conv1D(nf=6144, nx=2048)
                 (lora_dropout): ModuleDict(
-                  (layer_12_23): Dropout(p=0.1, inplace=False)
+                  (layer_6_11): Dropout(p=0.1, inplace=False)
                 )
                 (lora_A): ModuleDict(
-                  (layer_12_23): ModuleDict(
+                  (layer_6_11): ModuleDict(
                     (0): Linear(in_features=2048, out_features=17, bias=False)
                     (1): Linear(in_features=2048, out_features=47, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
-                  (layer_12_23): ModuleDict(
+                  (layer_6_11): ModuleDict(
                     (0): Linear(in_features=17, out_features=6144, bias=False)
                     (1): Linear(in_features=47, out_features=6144, bias=False)
                   )
@@ -103,16 +103,16 @@ PeftModelForCausalLM(
               (c_proj): lora.Linear(
                 (base_layer): Conv1D(nf=2048, nx=2048)
                 (lora_dropout): ModuleDict(
-                  (layer_12_23): Dropout(p=0.1, inplace=False)
+                  (layer_6_11): Dropout(p=0.1, inplace=False)
                 )
                 (lora_A): ModuleDict(
-                  (layer_12_23): ModuleDict(
+                  (layer_6_11): ModuleDict(
                     (0): Linear(in_features=2048, out_features=17, bias=False)
                     (1): Linear(in_features=2048, out_features=47, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
-                  (layer_12_23): ModuleDict(
+                  (layer_6_11): ModuleDict(
                     (0): Linear(in_features=17, out_features=2048, bias=False)
                     (1): Linear(in_features=47, out_features=2048, bias=False)
                   )
@@ -130,18 +130,206 @@ PeftModelForCausalLM(
               (c_proj): lora.Linear(
                 (base_layer): Conv1D(nf=2048, nx=8192)
                 (lora_dropout): ModuleDict(
-                  (layer_12_23): Dropout(p=0.1, inplace=False)
+                  (layer_6_11): Dropout(p=0.1, inplace=False)
                 )
                 (lora_A): ModuleDict(
-                  (layer_12_23): ModuleDict(
+                  (layer_6_11): ModuleDict(
                     (0): Linear(in_features=8192, out_features=17, bias=False)
                     (1): Linear(in_features=8192, out_features=47, bias=False)
                   )
                 )
                 (lora_B): ModuleDict(
-                  (layer_12_23): ModuleDict(
+                  (layer_6_11): ModuleDict(
                     (0): Linear(in_features=17, out_features=2048, bias=False)
                     (1): Linear(in_features=47, out_features=2048, bias=False)
+                  )
+                )
+                (lora_embedding_A): ParameterDict()
+                (lora_embedding_B): ParameterDict()
+                (lora_magnitude_vector): ModuleDict()
+              )
+              (act): NewGELUActivation()
+              (dropout): Dropout(p=0.1, inplace=False)
+            )
+          )
+          (12-17): 6 x GPT2Block(
+            (ln_1): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+            (attn): GPT2FlashAttention2(
+              (c_attn): lora.Linear(
+                (base_layer): Conv1D(nf=6144, nx=2048)
+                (lora_dropout): ModuleDict(
+                  (layer_12_17): Dropout(p=0.1, inplace=False)
+                )
+                (lora_A): ModuleDict(
+                  (layer_12_17): ModuleDict(
+                    (0): Linear(in_features=2048, out_features=3, bias=False)
+                    (1): Linear(in_features=2048, out_features=14, bias=False)
+                    (2): Linear(in_features=2048, out_features=21, bias=False)
+                    (3): Linear(in_features=2048, out_features=26, bias=False)
+                  )
+                )
+                (lora_B): ModuleDict(
+                  (layer_12_17): ModuleDict(
+                    (0): Linear(in_features=3, out_features=6144, bias=False)
+                    (1): Linear(in_features=14, out_features=6144, bias=False)
+                    (2): Linear(in_features=21, out_features=6144, bias=False)
+                    (3): Linear(in_features=26, out_features=6144, bias=False)
+                  )
+                )
+                (lora_embedding_A): ParameterDict()
+                (lora_embedding_B): ParameterDict()
+                (lora_magnitude_vector): ModuleDict()
+              )
+              (c_proj): lora.Linear(
+                (base_layer): Conv1D(nf=2048, nx=2048)
+                (lora_dropout): ModuleDict(
+                  (layer_12_17): Dropout(p=0.1, inplace=False)
+                )
+                (lora_A): ModuleDict(
+                  (layer_12_17): ModuleDict(
+                    (0): Linear(in_features=2048, out_features=3, bias=False)
+                    (1): Linear(in_features=2048, out_features=14, bias=False)
+                    (2): Linear(in_features=2048, out_features=21, bias=False)
+                    (3): Linear(in_features=2048, out_features=26, bias=False)
+                  )
+                )
+                (lora_B): ModuleDict(
+                  (layer_12_17): ModuleDict(
+                    (0): Linear(in_features=3, out_features=2048, bias=False)
+                    (1): Linear(in_features=14, out_features=2048, bias=False)
+                    (2): Linear(in_features=21, out_features=2048, bias=False)
+                    (3): Linear(in_features=26, out_features=2048, bias=False)
+                  )
+                )
+                (lora_embedding_A): ParameterDict()
+                (lora_embedding_B): ParameterDict()
+                (lora_magnitude_vector): ModuleDict()
+              )
+              (attn_dropout): Dropout(p=0.1, inplace=False)
+              (resid_dropout): Dropout(p=0.1, inplace=False)
+            )
+            (ln_2): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+            (mlp): GPT2MLP(
+              (c_fc): Conv1D(nf=8192, nx=2048)
+              (c_proj): lora.Linear(
+                (base_layer): Conv1D(nf=2048, nx=8192)
+                (lora_dropout): ModuleDict(
+                  (layer_12_17): Dropout(p=0.1, inplace=False)
+                )
+                (lora_A): ModuleDict(
+                  (layer_12_17): ModuleDict(
+                    (0): Linear(in_features=8192, out_features=3, bias=False)
+                    (1): Linear(in_features=8192, out_features=14, bias=False)
+                    (2): Linear(in_features=8192, out_features=21, bias=False)
+                    (3): Linear(in_features=8192, out_features=26, bias=False)
+                  )
+                )
+                (lora_B): ModuleDict(
+                  (layer_12_17): ModuleDict(
+                    (0): Linear(in_features=3, out_features=2048, bias=False)
+                    (1): Linear(in_features=14, out_features=2048, bias=False)
+                    (2): Linear(in_features=21, out_features=2048, bias=False)
+                    (3): Linear(in_features=26, out_features=2048, bias=False)
+                  )
+                )
+                (lora_embedding_A): ParameterDict()
+                (lora_embedding_B): ParameterDict()
+                (lora_magnitude_vector): ModuleDict()
+              )
+              (act): NewGELUActivation()
+              (dropout): Dropout(p=0.1, inplace=False)
+            )
+          )
+          (18-23): 6 x GPT2Block(
+            (ln_1): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+            (attn): GPT2FlashAttention2(
+              (c_attn): lora.Linear(
+                (base_layer): Conv1D(nf=6144, nx=2048)
+                (lora_dropout): ModuleDict(
+                  (layer_18_23): Dropout(p=0.1, inplace=False)
+                )
+                (lora_A): ModuleDict(
+                  (layer_18_23): ModuleDict(
+                    (0): Linear(in_features=2048, out_features=3, bias=False)
+                    (1): Linear(in_features=2048, out_features=12, bias=False)
+                    (2): Linear(in_features=2048, out_features=2, bias=False)
+                    (3): Linear(in_features=2048, out_features=21, bias=False)
+                    (4): Linear(in_features=2048, out_features=16, bias=False)
+                    (5): Linear(in_features=2048, out_features=10, bias=False)
+                  )
+                )
+                (lora_B): ModuleDict(
+                  (layer_18_23): ModuleDict(
+                    (0): Linear(in_features=3, out_features=6144, bias=False)
+                    (1): Linear(in_features=12, out_features=6144, bias=False)
+                    (2): Linear(in_features=2, out_features=6144, bias=False)
+                    (3): Linear(in_features=21, out_features=6144, bias=False)
+                    (4): Linear(in_features=16, out_features=6144, bias=False)
+                    (5): Linear(in_features=10, out_features=6144, bias=False)
+                  )
+                )
+                (lora_embedding_A): ParameterDict()
+                (lora_embedding_B): ParameterDict()
+                (lora_magnitude_vector): ModuleDict()
+              )
+              (c_proj): lora.Linear(
+                (base_layer): Conv1D(nf=2048, nx=2048)
+                (lora_dropout): ModuleDict(
+                  (layer_18_23): Dropout(p=0.1, inplace=False)
+                )
+                (lora_A): ModuleDict(
+                  (layer_18_23): ModuleDict(
+                    (0): Linear(in_features=2048, out_features=3, bias=False)
+                    (1): Linear(in_features=2048, out_features=12, bias=False)
+                    (2): Linear(in_features=2048, out_features=2, bias=False)
+                    (3): Linear(in_features=2048, out_features=21, bias=False)
+                    (4): Linear(in_features=2048, out_features=16, bias=False)
+                    (5): Linear(in_features=2048, out_features=10, bias=False)
+                  )
+                )
+                (lora_B): ModuleDict(
+                  (layer_18_23): ModuleDict(
+                    (0): Linear(in_features=3, out_features=2048, bias=False)
+                    (1): Linear(in_features=12, out_features=2048, bias=False)
+                    (2): Linear(in_features=2, out_features=2048, bias=False)
+                    (3): Linear(in_features=21, out_features=2048, bias=False)
+                    (4): Linear(in_features=16, out_features=2048, bias=False)
+                    (5): Linear(in_features=10, out_features=2048, bias=False)
+                  )
+                )
+                (lora_embedding_A): ParameterDict()
+                (lora_embedding_B): ParameterDict()
+                (lora_magnitude_vector): ModuleDict()
+              )
+              (attn_dropout): Dropout(p=0.1, inplace=False)
+              (resid_dropout): Dropout(p=0.1, inplace=False)
+            )
+            (ln_2): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+            (mlp): GPT2MLP(
+              (c_fc): Conv1D(nf=8192, nx=2048)
+              (c_proj): lora.Linear(
+                (base_layer): Conv1D(nf=2048, nx=8192)
+                (lora_dropout): ModuleDict(
+                  (layer_18_23): Dropout(p=0.1, inplace=False)
+                )
+                (lora_A): ModuleDict(
+                  (layer_18_23): ModuleDict(
+                    (0): Linear(in_features=8192, out_features=3, bias=False)
+                    (1): Linear(in_features=8192, out_features=12, bias=False)
+                    (2): Linear(in_features=8192, out_features=2, bias=False)
+                    (3): Linear(in_features=8192, out_features=21, bias=False)
+                    (4): Linear(in_features=8192, out_features=16, bias=False)
+                    (5): Linear(in_features=8192, out_features=10, bias=False)
+                  )
+                )
+                (lora_B): ModuleDict(
+                  (layer_18_23): ModuleDict(
+                    (0): Linear(in_features=3, out_features=2048, bias=False)
+                    (1): Linear(in_features=12, out_features=2048, bias=False)
+                    (2): Linear(in_features=2, out_features=2048, bias=False)
+                    (3): Linear(in_features=21, out_features=2048, bias=False)
+                    (4): Linear(in_features=16, out_features=2048, bias=False)
+                    (5): Linear(in_features=10, out_features=2048, bias=False)
                   )
                 )
                 (lora_embedding_A): ParameterDict()
