@@ -268,9 +268,9 @@ api = HfApi()
 api.create_repo(repo_id=repo_name, token=huggingface_token, exist_ok=True)
 
 # 2. Save the model, tokenizer, and training arguments
-trainer.model.save_pretrained(output_dir)
+model.save_pretrained(output_dir, save_adapter=True)
 tokenizer.save_pretrained(output_dir)
 
-# 3. Push the model and tokenizer to the Hugging Face Hub
-trainer.model.push_to_hub(repo_name, use_auth_token=huggingface_token)
+# Push the adapter weights to the Hugging Face Hub
+model.push_to_hub(repo_name, use_auth_token=huggingface_token)
 tokenizer.push_to_hub(repo_name, use_auth_token=huggingface_token)
