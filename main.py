@@ -30,14 +30,11 @@ seed = 42
 set_seed(seed)
 
 # 1. Initialize the tokenizer and model
-model_name = "gpt2-xl"
+model_name = "ai-forever/mGPT"
 
 # Load tokenizer
 tokenizer = AutoTokenizer.from_pretrained(model_name)
-# Ensure the tokenizer has a padding token
-if tokenizer.pad_token is None:
-    tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = 'left'
+
 
 # Load pre-trained GPT-2 XL model
 # Since you've modified the model classes in the transformers library,
@@ -45,9 +42,9 @@ if tokenizer.pad_token is None:
 model = AutoModelForCausalLM.from_pretrained(model_name, attn_implementation="flash_attention_2")
 
 # 2. Load your dataset
-dataset = load_dataset('MHGanainy/multi_clustering', 'lex-former-8-clustered-instance-b-dataset-cluster')
+dataset = load_dataset("MHGanainy/multilingual_caselaw", "meta-cluster-1024-sampled")
 
-block_size = 1024
+block_size = 2048
 
 # Task types mapping
 dataset_name_to_task_types = {
@@ -73,7 +70,7 @@ def tokenize_function(examples):
     labels = input_ids.copy()
 
     # Set the first 512 tokens of labels to -100
-    labels = [[-100]*512 + ids[512:] for ids in labels]
+    labels = [[-100]*1024 + ids[1024:] for ids in labels]
 
     # Set labels to -100 where input_ids == pad_token_id
     labels = [
@@ -113,10 +110,10 @@ def prepare_dataset(dataset_split, split="train"):
     return lm_dataset
 
 print("Preprocessing training data...")
-train_dataset = prepare_dataset(dataset["train"], "train")
+train_dataset = prepare_dataset(dataset["train"].select(range(100)), "train")
 
 print("Preprocessing validation data...")
-eval_dataset = prepare_dataset(dataset["validation"], "validation")
+eval_dataset = prepare_dataset(dataset["validation"].select(range(100)), "validation")
 
 # 4. Apply PEFT with LoRA configurations
 # Define LoRA configurations
@@ -126,11 +123,11 @@ peft_config_layers_0_8 = LoraConfig(
     lora_alpha=128,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(0, 9)),
+    layers_to_transform=0,
     layers_pattern="h",
     num_adapters_per_layer=1,
     layer_group=0,
-    adapter_labels=["EU,Indian,ECHR,UK,CAC"],
+    adapter_labels=["DA_S_FR_BE_S_IT_S_DE_G_DE"],
     r_a=[64]
 )
 
