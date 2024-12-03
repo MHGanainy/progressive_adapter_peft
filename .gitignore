@@ -5,3 +5,5 @@ peft/__pycache__/
 mgpt-peft-lora-trained/*
 gpt2-xl-peft-lora-trained/*
 mgpt-peft-lora/*
+cache/*
+evaluation_output/*
