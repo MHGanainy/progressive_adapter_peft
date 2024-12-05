@@ -145,7 +145,7 @@ peft_config_layers_6_11 = LoraConfig(
     num_adapters_per_layer=2,
     layer_group=1,
     adapter_labels=['DA_FR','IT_DE'],
-    r_a=[17,47]
+    r_a=[32,32]
 )
 
 peft_config_layers_12_17 = LoraConfig(
@@ -159,7 +159,7 @@ peft_config_layers_12_17 = LoraConfig(
     num_adapters_per_layer=4,
     layer_group=2,
     adapter_labels=['DA','FR','IT','DE'],
-    r_a=[3,14,21,26]
+    r_a=[16,16,16,16]
 )
 
 peft_config_layers_18_23 = LoraConfig(
@@ -173,7 +173,7 @@ peft_config_layers_18_23 = LoraConfig(
     num_adapters_per_layer=6,
     layer_group=3,
     adapter_labels=['DA','S_FR','B_FR','IT','S_DE','G_DE'],
-    r_a=[3,12,2,21,16,10]
+    r_a=[11,11,11,11,11,11]
 )
 
 # Apply PEFT to the model
@@ -261,7 +261,7 @@ huggingface_token = "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"
 
 # Define your output directory and repository name
 output_dir = "./mgpt-peft-lora"
-repo_name = "MHGanainy/mgpt-ProAdapter-imbalanced"
+repo_name = "MHGanainy/mgpt-ProAdapter-balanced"
 
 # 1. Manually create the repository if it does not exist
 api = HfApi()
