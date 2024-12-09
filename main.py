@@ -113,10 +113,10 @@ def prepare_dataset(dataset_split, split="train"):
     return lm_dataset
 
 print("Preprocessing training data...")
-train_dataset = prepare_dataset(dataset["train"].select(range(1000)), "train")
+train_dataset = prepare_dataset(dataset["train"], "train")
 
 print("Preprocessing validation data...")
-eval_dataset = prepare_dataset(dataset["validation"].select(range(1000)), "validation")
+eval_dataset = prepare_dataset(dataset["validation"], "validation")
 
 # 4. Apply PEFT with LoRA configurations
 # Define LoRA configurations
