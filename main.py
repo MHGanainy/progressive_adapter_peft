@@ -48,13 +48,13 @@ block_size = 2048
 
 # Task types mapping
 dataset_name_to_task_types = {
-    'Denmark_da_caselaw':     [0, 0, 0, 0],
-    'Switzerland_fr_caselaw': [0, 0, 1, 1],
-    'Belgium_fr_caselaw':     [0, 0, 1, 2],
-
-    'Switzerland_it_caselaw': [0, 1, 2, 3],
-    'Switzerland_de_caselaw': [0, 1, 3, 4],
-    'Germany_de_caselaw':     [0, 1, 3, 5],
+    'Denmark_da_caselaw':     [0, 0, 0],
+    'Belgium_fr_caselaw':     [0, 1, 2],
+    
+    'Switzerland_fr_caselaw': [0, 2, 1],
+    'Switzerland_it_caselaw': [0, 2, 3],
+    'Switzerland_de_caselaw': [0, 2, 4],
+    'Germany_de_caselaw':     [0, 2, 5],
     
 }
 
@@ -113,20 +113,20 @@ def prepare_dataset(dataset_split, split="train"):
     return lm_dataset
 
 print("Preprocessing training data...")
-train_dataset = prepare_dataset(dataset["train"], "train")
+train_dataset = prepare_dataset(dataset["train"].select(range(1000)), "train")
 
 print("Preprocessing validation data...")
-eval_dataset = prepare_dataset(dataset["validation"], "validation")
+eval_dataset = prepare_dataset(dataset["validation"].select(range(1000)), "validation")
 
 # 4. Apply PEFT with LoRA configurations
 # Define LoRA configurations
-peft_config_layers_0_5 = LoraConfig(
+peft_config_layers_0_21 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=64,
     lora_alpha=128,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(0, 6)),
+    layers_to_transform=list(range(0, 22)),
     layers_pattern="h",
     num_adapters_per_layer=1,
     layer_group=0,
@@ -134,53 +134,39 @@ peft_config_layers_0_5 = LoraConfig(
     r_a=[64]
 )
 
-peft_config_layers_6_11 = LoraConfig(
+peft_config_layers_22 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=32,
     lora_alpha=64,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(6, 12)),
+    layers_to_transform=[22],
     layers_pattern="h",
-    num_adapters_per_layer=2,
+    num_adapters_per_layer=3,
     layer_group=1,
-    adapter_labels=['DA_FR','IT_DE'],
-    r_a=[32,32]
+    adapter_labels=['DA','B_FR','S_G'],
+    r_a=[3,2,59]
 )
 
-peft_config_layers_12_17 = LoraConfig(
+peft_config_layers_23 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=16,
     lora_alpha=32,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(12, 18)),
-    layers_pattern="h",
-    num_adapters_per_layer=4,
-    layer_group=2,
-    adapter_labels=['DA','FR','IT','DE'],
-    r_a=[16,16,16,16]
-)
-
-peft_config_layers_18_23 = LoraConfig(
-    task_type=TaskType.CAUSAL_LM,
-    r=13,
-    lora_alpha=26,
-    target_modules=['c_attn', 'c_proj'],
-    lora_dropout=0.1,
-    layers_to_transform=list(range(18, 24)),
+    layers_to_transform=[23],
     layers_pattern="h",
     num_adapters_per_layer=6,
-    layer_group=3,
+    layer_group=2,
     adapter_labels=['DA','S_FR','B_FR','IT','S_DE','G_DE'],
-    r_a=[11,11,11,11,11,11]
+    r_a=[3,12,2,21,16,10]
 )
 
+
 # Apply PEFT to the model
-model = get_peft_model(model, peft_config_layers_0_5, adapter_name="layer_0_5")
-model.add_adapter("layer_6_11", peft_config_layers_6_11)
-model.add_adapter("layer_12_17", peft_config_layers_12_17)
-model.add_adapter("layer_18_23", peft_config_layers_18_23)
+model = get_peft_model(model, peft_config_layers_0_21, adapter_name="layer_0_21")
+model.add_adapter("layer_22", peft_config_layers_22)
+model.add_adapter("layer_23", peft_config_layers_23)
 
 # Manually set requires_grad=True for all adapter parameters
 for name, param in model.named_parameters():
@@ -261,15 +247,15 @@ huggingface_token = "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"
 
 # Define your output directory and repository name
 output_dir = "./mgpt-peft-lora"
-repo_name = "MHGanainy/mgpt-ProAdapter-balanced"
-
-# 1. Manually create the repository if it does not exist
-api = HfApi()
-api.create_repo(repo_id=repo_name, token=huggingface_token, exist_ok=True)
+repo_name = "MHGanainy/mgpt-ProAdapter-des"
 
 # 2. Save the model, tokenizer, and training arguments
 trainer.model.save_pretrained(output_dir)
 tokenizer.save_pretrained(output_dir)
+
+# 1. Manually create the repository if it does not exist
+api = HfApi()
+api.create_repo(repo_id=repo_name, token=huggingface_token, exist_ok=True)
 
 # 3. Push the model and tokenizer to the Hugging Face Hub
 trainer.model.push_to_hub(repo_name, use_auth_token=huggingface_token)
