@@ -39,13 +39,13 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name, attn_implementation="flash_attention_2")
 
 # 2. Define PEFT LoRA configurations (same as during training)
-peft_config_layers_0_5 = LoraConfig(
+peft_config_layers_0_21 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=64,
     lora_alpha=128,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(0, 6)),
+    layers_to_transform=list(range(0, 22)),
     layers_pattern="h",
     num_adapters_per_layer=1,
     layer_group=0,
@@ -53,53 +53,38 @@ peft_config_layers_0_5 = LoraConfig(
     r_a=[64]
 )
 
-peft_config_layers_6_11 = LoraConfig(
+peft_config_layers_22 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=32,
     lora_alpha=64,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(6, 12)),
+    layers_to_transform=[22],
     layers_pattern="h",
-    num_adapters_per_layer=2,
+    num_adapters_per_layer=3,
     layer_group=1,
-    adapter_labels=['DA_FR','IT_DE'],
-    r_a=[17,47]
+    adapter_labels=['DA','B_FR','S_G'],
+    r_a=[3,2,59]
 )
 
-peft_config_layers_12_17 = LoraConfig(
+peft_config_layers_23 = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=16,
     lora_alpha=32,
     target_modules=['c_attn', 'c_proj'],
     lora_dropout=0.1,
-    layers_to_transform=list(range(12, 18)),
-    layers_pattern="h",
-    num_adapters_per_layer=4,
-    layer_group=2,
-    adapter_labels=['DA','FR','IT','DE'],
-    r_a=[3,14,21,26]
-)
-
-peft_config_layers_18_23 = LoraConfig(
-    task_type=TaskType.CAUSAL_LM,
-    r=13,
-    lora_alpha=26,
-    target_modules=['c_attn', 'c_proj'],
-    lora_dropout=0.1,
-    layers_to_transform=list(range(18, 24)),
+    layers_to_transform=[23],
     layers_pattern="h",
     num_adapters_per_layer=6,
-    layer_group=3,
+    layer_group=2,
     adapter_labels=['DA','S_FR','B_FR','IT','S_DE','G_DE'],
     r_a=[3,12,2,21,16,10]
 )
 
 # Apply PEFT to the model
-model = get_peft_model(model, peft_config_layers_0_5, adapter_name="layer_0_5")
-model.add_adapter("layer_6_11", peft_config_layers_6_11)
-model.add_adapter("layer_12_17", peft_config_layers_12_17)
-model.add_adapter("layer_18_23", peft_config_layers_18_23)
+model = get_peft_model(model, peft_config_layers_0_21, adapter_name="layer_0_21")
+model.add_adapter("layer_22", peft_config_layers_22)
+model.add_adapter("layer_23", peft_config_layers_23)
 
 # Ensure all adapter parameters require gradients (if necessary)
 for name, param in model.named_parameters():
@@ -109,7 +94,7 @@ for name, param in model.named_parameters():
 # 4. Load the adapter weights from the Hugging Face Hub
 from huggingface_hub import hf_hub_download
 
-repo_id = 'MHGanainy/mgpt-ProAdapter-imbalanced'
+repo_id = 'MHGanainy/mgpt-ProAdapter-des'
 
 # Function to load adapter weights into the model's adapters
 def load_adapter_weights(model, adapter_name, repo_id, subfolder=None):
@@ -191,10 +176,9 @@ def load_adapter_weights(model, adapter_name, repo_id, subfolder=None):
 
 
 # Load weights for each adapter
-load_adapter_weights(model, 'layer_0_5', repo_id, subfolder='layer_0_5')
-load_adapter_weights(model, 'layer_6_11', repo_id, subfolder='layer_6_11')
-load_adapter_weights(model, 'layer_12_17', repo_id, subfolder='layer_12_17')
-load_adapter_weights(model, 'layer_18_23', repo_id, subfolder='layer_18_23')
+load_adapter_weights(model, 'layer_0_21', repo_id, subfolder='layer_0_21')
+load_adapter_weights(model, 'layer_22', repo_id, subfolder='layer_22')
+load_adapter_weights(model, 'layer_23', repo_id, subfolder='layer_23')
 
 # Set model to evaluation mode
 model.eval()
@@ -207,13 +191,13 @@ block_size = 2048
 
 # Task types mapping
 dataset_name_to_task_types = {
-    'Denmark_da_caselaw':     [0, 0, 0, 0],
-    'Switzerland_fr_caselaw': [0, 0, 1, 1],
-    'Belgium_fr_caselaw':     [0, 0, 1, 2],
-
-    'Switzerland_it_caselaw': [0, 1, 2, 3],
-    'Switzerland_de_caselaw': [0, 1, 3, 4],
-    'Germany_de_caselaw':     [0, 1, 3, 5],
+    'Denmark_da_caselaw':     [0, 0, 0],
+    'Belgium_fr_caselaw':     [0, 1, 2],
+    
+    'Switzerland_fr_caselaw': [0, 2, 1],
+    'Switzerland_it_caselaw': [0, 2, 3],
+    'Switzerland_de_caselaw': [0, 2, 4],
+    'Germany_de_caselaw':     [0, 2, 5],
     
 }
 
@@ -272,11 +256,12 @@ def prepare_dataset(dataset_split, split="train"):
     return lm_dataset
 
 print("Preprocessing validation data...")
-cluster_id = 0
+# cluster_id = 0
 # cluster_id = 1 
 # cluster_id = 2 
-# cluster_id = 3 
+cluster_id = 3 
 # cluster_id = 4 
+# cluster_id = 5
 eval_dataset = prepare_dataset(dataset["validation"].filter(lambda x: x['cluster_id'] == cluster_id), "validation")
 
 # 6. Initialize Trainer for evaluation
