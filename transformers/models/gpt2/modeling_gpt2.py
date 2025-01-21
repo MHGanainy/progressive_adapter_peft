@@ -483,6 +483,7 @@ class GPT2SdpaAttention(GPT2Attention):
         encoder_attention_mask: Optional[torch.FloatTensor] = None,
         use_cache: Optional[bool] = False,
         output_attentions: Optional[bool] = False,
+        task_types= None
     ) -> Tuple[Union[torch.Tensor, Tuple[torch.Tensor]], ...]:
         if output_attentions or head_mask is not None:
             logger.warning_once(
