@@ -501,6 +501,7 @@ class GPT2SdpaAttention(GPT2Attention):
                 encoder_attention_mask=encoder_attention_mask,
                 use_cache=use_cache,
                 output_attentions=output_attentions,
+                task_types= task_types
             )
 
         bsz, q_len, _ = hidden_states.size()
