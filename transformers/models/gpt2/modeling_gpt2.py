@@ -515,11 +515,11 @@ class GPT2SdpaAttention(GPT2Attention):
                     "Please make sure to instantiate class with `GPT2SdpaAttention(..., is_cross_attention=True)`."
                 )
 
-            query = self.q_attn(hidden_states)
-            key, value = self.c_attn(encoder_hidden_states).split(self.split_size, dim=2)
+            query = self.q_attn(hidden_states, task_types=task_types)
+            key, value = self.c_attn(encoder_hidden_states, task_types=task_types).split(self.split_size, dim=2)
             attention_mask = encoder_attention_mask
         else:
-            query, key, value = self.c_attn(hidden_states).split(self.split_size, dim=2)
+            query, key, value = self.c_attn(hidden_states, task_types=task_types).split(self.split_size, dim=2)
 
         query = self._split_heads(query, self.num_heads, self.head_dim)
         key = self._split_heads(key, self.num_heads, self.head_dim)
@@ -560,7 +560,7 @@ class GPT2SdpaAttention(GPT2Attention):
         attn_output = attn_output.view(bsz, q_len, self.embed_dim)
 
         # Final projection
-        attn_output = self.c_proj(attn_output)
+        attn_output = self.c_proj(attn_output, task_types=task_types)
         attn_output = self.resid_dropout(attn_output)
 
         return attn_output, present, None
